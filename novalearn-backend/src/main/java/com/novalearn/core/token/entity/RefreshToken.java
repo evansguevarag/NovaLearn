@@ -4,6 +4,7 @@ import com.novalearn.core.user.entity.User;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+
 @Entity
 @Table(
         name = "refresh_tokens",

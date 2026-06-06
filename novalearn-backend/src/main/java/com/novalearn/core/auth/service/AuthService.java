@@ -11,31 +11,35 @@ import com.novalearn.core.user.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.novalearn.core.token.entity.RefreshToken;
+import com.novalearn.core.token.service.RefreshTokenService;
 
 @Service
 public class AuthService {
+        private final RefreshTokenService refreshTokenService;    
+        private final UserRepository userRepository;
+        private final PasswordEncoder passwordEncoder;
+        private final JwtService jwtService;
 
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
-
-    public AuthService(
-            UserRepository userRepository,
-            PasswordEncoder passwordEncoder,
-            JwtService jwtService
-    ) {
+        public AuthService(
+                UserRepository userRepository,
+                PasswordEncoder passwordEncoder,
+                JwtService jwtService,
+                RefreshTokenService refreshTokenService
+        ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
-    }
+        this.refreshTokenService = refreshTokenService;
+        }
 
-    @Transactional
-    public AuthResponse register(RegisterRequest request) {
+        @Transactional
+        public AuthResponse register(RegisterRequest request) {
 
-        String email = request.getEmail().trim().toLowerCase();
+                String email = request.getEmail().trim().toLowerCase();
 
-        if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("El correo ya está registrado");
+                if (userRepository.existsByEmail(email)) {
+                throw new IllegalArgumentException("El correo ya está registrado");
         }
 
         User user = new User();
@@ -51,44 +55,49 @@ public class AuthService {
 
         String accessToken = jwtService.generateAccessToken(savedUser.getEmail());
 
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(savedUser);
+
+        return new AuthResponse(
+        accessToken,
+        refreshToken.getToken(),
+        savedUser.getId(),
+        savedUser.getEmail(),
+        savedUser.getRole().name(),
+        savedUser.getStatus().name()
+);
+        }
+
+        @Transactional
+        public AuthResponse login(LoginRequest request) {
+
+        String email = request.getEmail().trim().toLowerCase();
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Credenciales inválidas")
+                );
+
+        boolean validPassword =
+                passwordEncoder.matches(
+                        request.getPassword(),
+                        user.getPassword()
+                );
+
+        if (!validPassword) {
+                throw new IllegalArgumentException("Credenciales inválidas");
+        }
+
+        String accessToken = jwtService.generateAccessToken(user.getEmail());
+
+                RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+
         return new AuthResponse(
                 accessToken,
-                savedUser.getId(),
-                savedUser.getEmail(),
-                savedUser.getRole().name(),
-                savedUser.getStatus().name()
+                refreshToken.getToken(),
+                user.getId(),
+                user.getEmail(),
+                user.getRole().name(),
+                user.getStatus().name()
         );
-    }
-
-    @Transactional(readOnly = true)
-public AuthResponse login(LoginRequest request) {
-
-    String email = request.getEmail().trim().toLowerCase();
-
-    User user = userRepository.findByEmail(email)
-            .orElseThrow(() ->
-                    new IllegalArgumentException("Credenciales inválidas")
-            );
-
-    boolean validPassword =
-            passwordEncoder.matches(
-                    request.getPassword(),
-                    user.getPassword()
-            );
-
-    if (!validPassword) {
-        throw new IllegalArgumentException("Credenciales inválidas");
-    }
-
-    String accessToken =
-            jwtService.generateAccessToken(user.getEmail());
-
-    return new AuthResponse(
-            accessToken,
-            user.getId(),
-            user.getEmail(),
-            user.getRole().name(),
-            user.getStatus().name()
-    );
-    }
+        }
 }
