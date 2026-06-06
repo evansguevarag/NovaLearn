@@ -128,4 +128,11 @@ public class AuthService {
                 user.getStatus().name()
         );
         }
+
+        @Transactional
+        public void logout(RefreshTokenRequest request) {
+        refreshTokenService.revokeRefreshToken(
+                request.getRefreshToken()
+        );
+        }
 }

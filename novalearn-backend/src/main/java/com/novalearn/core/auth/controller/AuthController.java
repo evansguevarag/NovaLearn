@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.novalearn.core.auth.dto.RefreshTokenRequest;
+import com.novalearn.core.auth.dto.LogoutResponse;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -48,6 +49,17 @@ public class AuthController {
     ) {
         return ResponseEntity.ok(
                 authService.refreshToken(request)
+        );
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<LogoutResponse> logout(
+            @Valid @RequestBody RefreshTokenRequest request
+    ) {
+        authService.logout(request);
+
+        return ResponseEntity.ok(
+                new LogoutResponse("Sesion cerrada correctamente")
         );
     }
 }

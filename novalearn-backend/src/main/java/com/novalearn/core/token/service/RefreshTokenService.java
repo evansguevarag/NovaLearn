@@ -64,4 +64,17 @@ public class RefreshTokenService {
 
         return refreshToken;
     }
+
+    @Transactional
+    public void revokeRefreshToken(String token) {
+
+        RefreshToken refreshToken = refreshTokenRepository.findByToken(token)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Refresh token inválido")
+                );
+
+        refreshToken.revoke();
+
+        refreshTokenRepository.save(refreshToken);
+    }
 }
