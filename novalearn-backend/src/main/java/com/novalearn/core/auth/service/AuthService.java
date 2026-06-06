@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.novalearn.core.token.entity.RefreshToken;
 import com.novalearn.core.token.service.RefreshTokenService;
+import com.novalearn.core.auth.dto.RefreshTokenRequest;
 
 @Service
 public class AuthService {
@@ -94,6 +95,33 @@ public class AuthService {
         return new AuthResponse(
                 accessToken,
                 refreshToken.getToken(),
+                user.getId(),
+                user.getEmail(),
+                user.getRole().name(),
+                user.getStatus().name()
+        );
+        }
+
+        @Transactional
+        public AuthResponse refreshToken(RefreshTokenRequest request) {
+
+        RefreshToken currentRefreshToken =
+                refreshTokenService.validateRefreshToken(
+                        request.getRefreshToken()
+                );
+
+        User user = currentRefreshToken.getUser();
+
+        currentRefreshToken.revoke();
+
+        String accessToken = jwtService.generateAccessToken(user.getEmail());
+
+        RefreshToken newRefreshToken =
+                refreshTokenService.createRefreshToken(user);
+
+        return new AuthResponse(
+                accessToken,
+                newRefreshToken.getToken(),
                 user.getId(),
                 user.getEmail(),
                 user.getRole().name(),

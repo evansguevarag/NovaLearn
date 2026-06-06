@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.novalearn.core.auth.dto.RefreshTokenRequest;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -38,6 +39,15 @@ public class AuthController {
     ) {
         return ResponseEntity.ok(
                 authService.login(request)
+        );
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(
+            @Valid @RequestBody RefreshTokenRequest request
+    ) {
+        return ResponseEntity.ok(
+                authService.refreshToken(request)
         );
     }
 }

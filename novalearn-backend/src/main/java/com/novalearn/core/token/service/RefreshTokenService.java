@@ -45,4 +45,23 @@ public class RefreshTokenService {
 
         return refreshTokenRepository.save(refreshToken);
     }
+
+    @Transactional(readOnly = true)
+    public RefreshToken validateRefreshToken(String token) {
+
+        RefreshToken refreshToken = refreshTokenRepository.findByToken(token)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Refresh token inválido")
+                );
+
+        if (Boolean.TRUE.equals(refreshToken.getRevoked())) {
+            throw new IllegalArgumentException("Refresh token revocado");
+        }
+
+        if (refreshToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Refresh token expirado");
+        }
+
+        return refreshToken;
+    }
 }
