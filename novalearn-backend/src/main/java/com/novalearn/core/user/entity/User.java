@@ -36,11 +36,11 @@ public class User {
     private String avatarUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false, columnDefinition = "user_role")
+    @Column(name = "role", nullable = false, length = 50)
     private UserRole role;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, columnDefinition = "user_status")
+    @Column(name = "status", nullable = false, length = 50)
     private UserStatus status;
 
     @Column(name = "email_verified", nullable = false)
