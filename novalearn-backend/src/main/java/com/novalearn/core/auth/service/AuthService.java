@@ -1,6 +1,7 @@
 package com.novalearn.core.auth.service;
 
 import com.novalearn.core.auth.dto.AuthResponse;
+import com.novalearn.core.auth.dto.LoginRequest;
 import com.novalearn.core.auth.dto.RegisterRequest;
 import com.novalearn.core.auth.jwt.JwtService;
 import com.novalearn.core.user.entity.User;
@@ -57,5 +58,37 @@ public class AuthService {
                 savedUser.getRole().name(),
                 savedUser.getStatus().name()
         );
+    }
+
+    @Transactional(readOnly = true)
+public AuthResponse login(LoginRequest request) {
+
+    String email = request.getEmail().trim().toLowerCase();
+
+    User user = userRepository.findByEmail(email)
+            .orElseThrow(() ->
+                    new IllegalArgumentException("Credenciales inválidas")
+            );
+
+    boolean validPassword =
+            passwordEncoder.matches(
+                    request.getPassword(),
+                    user.getPassword()
+            );
+
+    if (!validPassword) {
+        throw new IllegalArgumentException("Credenciales inválidas");
+    }
+
+    String accessToken =
+            jwtService.generateAccessToken(user.getEmail());
+
+    return new AuthResponse(
+            accessToken,
+            user.getId(),
+            user.getEmail(),
+            user.getRole().name(),
+            user.getStatus().name()
+    );
     }
 }

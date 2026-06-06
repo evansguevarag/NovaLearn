@@ -1,6 +1,7 @@
 package com.novalearn.core.auth.controller;
 
 import com.novalearn.core.auth.dto.AuthResponse;
+import com.novalearn.core.auth.dto.LoginRequest;
 import com.novalearn.core.auth.dto.RegisterRequest;
 import com.novalearn.core.auth.service.AuthService;
 import jakarta.validation.Valid;
@@ -29,5 +30,14 @@ public class AuthController {
     ) {
         AuthResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(
+            @Valid @RequestBody LoginRequest request
+    ) {
+        return ResponseEntity.ok(
+                authService.login(request)
+        );
     }
 }
