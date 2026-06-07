@@ -52,22 +52,22 @@ public class SecurityConfig {
                         UsernamePasswordAuthenticationFilter.class
                 )
                 .build();
-    }
+        }
 
-    @Bean
-    public UserDetailsService userDetailsService(UserRepository userRepository) {
-        return email -> userRepository.findByEmail(email)
-                .map(user -> org.springframework.security.core.userdetails.User
-                        .withUsername(user.getEmail())
-                        .password(user.getPassword())
-                        .roles(user.getRole().name())
-                        .build()
-                )
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
-    }
+        @Bean
+        public UserDetailsService userDetailsService(UserRepository userRepository) {
+                return email -> userRepository.findByEmail(email)
+                        .map(user -> org.springframework.security.core.userdetails.User
+                                .withUsername(user.getEmail())
+                                .password(user.getPassword())
+                                .roles(user.getRole().name())
+                                .build()
+                        )
+                        .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+        }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+        @Bean
+        public PasswordEncoder passwordEncoder() {
+                return new BCryptPasswordEncoder();
+        }
 }
