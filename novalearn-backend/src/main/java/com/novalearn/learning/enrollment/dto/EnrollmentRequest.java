@@ -10,6 +10,14 @@ public class EnrollmentRequest {
     @NotNull(message = "El curso es obligatorio")
     private Long courseId;
 
+    public EnrollmentRequest() {
+    }
+
+    public EnrollmentRequest(Long studentId, Long courseId) {
+        this.studentId = studentId;
+        this.courseId = courseId;
+    }
+
     public Long getStudentId() {
         return studentId;
     }
