@@ -40,10 +40,13 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/", "/api/v1/public/**").permitAll()
+                .requestMatchers("/api/v1/certificates/code/**").permitAll()
 
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/v1/certificates/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/v1/instructor/**").hasAnyRole("ADMIN", "INSTRUCTOR")
                 .requestMatchers("/api/v1/student/**").hasAnyRole("ADMIN", "STUDENT")
+                .requestMatchers("/api/v1/certificates/enrollment/**").hasAnyRole("ADMIN", "STUDENT")
 
                 .anyRequest().authenticated()
         )
