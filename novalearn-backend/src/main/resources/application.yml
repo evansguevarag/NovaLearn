@@ -22,6 +22,11 @@ spring:
     enabled: true
     locations: "classpath:db/migration"
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB  
+
 app:
   security:
     jwt:
@@ -34,3 +39,9 @@ app:
     password: ${ADMIN_PASSWORD}
     first-name: ${ADMIN_FIRST_NAME}
     last-name: ${ADMIN_LAST_NAME}
+
+  cloudinary:
+    cloud-name: ${CLOUDINARY_CLOUD_NAME}
+    api-key: ${CLOUDINARY_API_KEY}
+    api-secret: ${CLOUDINARY_API_SECRET}
+    folder: ${CLOUDINARY_FOLDER:novalearn/courses}
