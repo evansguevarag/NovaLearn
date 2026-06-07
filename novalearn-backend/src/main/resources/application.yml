@@ -6,10 +6,9 @@ spring:
     name: novalearn-backend
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/novalearn_db
-    username: novalearn_user
-    password: NovaLearn123
-    driver-class-name: org.postgresql.Driver
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
 
   jpa:
     hibernate:
@@ -26,6 +25,12 @@ spring:
 app:
   security:
     jwt:
-      secret: "NovaLearnSuperSecretKeyForJwtTokenGenerationMustBeLongEnough123456"
-      access-token-expiration-minutes: 15
-      refresh-token-expiration-days: 7
+      secret: ${JWT_SECRET}
+      access-token-expiration-minutes: ${JWT_ACCESS_EXPIRATION_MINUTES}
+      refresh-token-expiration-days: ${JWT_REFRESH_EXPIRATION_DAYS}
+
+  admin:
+    email: ${ADMIN_EMAIL}
+    password: ${ADMIN_PASSWORD}
+    first-name: ${ADMIN_FIRST_NAME}
+    last-name: ${ADMIN_LAST_NAME}
