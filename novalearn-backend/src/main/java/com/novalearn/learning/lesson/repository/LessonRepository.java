@@ -11,4 +11,6 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
     Optional<Lesson> findByIdAndDeletedAtIsNull(Long id);
 
     List<Lesson> findByModuleIdAndDeletedAtIsNullOrderBySortOrderAsc(Long moduleId);
+
+    long countByModuleCourseIdAndDeletedAtIsNull(Long courseId);
 }
