@@ -20,6 +20,8 @@ import com.novalearn.payment.repository.PaymentRepository;
 import com.novalearn.payment.repository.PaymentTransactionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.novalearn.notification.email.service.EmailService;
+import com.novalearn.notification.email.service.EmailTemplateService;
 
 import java.util.List;
 
@@ -31,19 +33,25 @@ public class PaymentService {
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final EnrollmentService enrollmentService;
+    private final EmailService emailService;
+    private final EmailTemplateService emailTemplateService;
 
     public PaymentService(
             PaymentRepository paymentRepository,
             PaymentTransactionRepository transactionRepository,
             CourseRepository courseRepository,
             EnrollmentRepository enrollmentRepository,
-            EnrollmentService enrollmentService
+            EnrollmentService enrollmentService,
+            EmailService emailService,
+            EmailTemplateService emailTemplateService
     ) {
         this.paymentRepository = paymentRepository;
         this.transactionRepository = transactionRepository;
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.enrollmentService = enrollmentService;
+        this.emailService = emailService;
+        this.emailTemplateService = emailTemplateService;
     }
 
     @Transactional
@@ -72,6 +80,15 @@ public class PaymentService {
         payment.setProvider(PaymentProvider.CULQI);
 
         Payment savedPayment = paymentRepository.save(payment);
+
+        try {
+            emailService.sendEmail(
+                    payment.getStudent().getEmail(),
+                    emailTemplateService.paymentSubject(),
+                    emailTemplateService.paymentHtml(payment)
+            );
+        } catch (Exception ignored) {
+        }
 
         registerTransaction(
                 savedPayment,

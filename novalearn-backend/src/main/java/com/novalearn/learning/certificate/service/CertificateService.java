@@ -7,6 +7,8 @@ import com.novalearn.learning.enrollment.entity.Enrollment;
 import com.novalearn.learning.enrollment.repository.EnrollmentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.novalearn.notification.email.service.EmailService;
+import com.novalearn.notification.email.service.EmailTemplateService;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -16,13 +18,19 @@ public class CertificateService {
 
     private final CertificateRepository certificateRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final EmailService emailService;
+    private final EmailTemplateService emailTemplateService;
 
     public CertificateService(
             CertificateRepository certificateRepository,
-            EnrollmentRepository enrollmentRepository
+            EnrollmentRepository enrollmentRepository,
+            EmailService emailService,
+            EmailTemplateService emailTemplateService
     ) {
         this.certificateRepository = certificateRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.emailService = emailService;
+        this.emailTemplateService = emailTemplateService;
     }
 
     @Transactional
@@ -49,7 +57,18 @@ public class CertificateService {
 
         Certificate savedCertificate = certificateRepository.save(certificate);
 
-        return new CertificateResponse(savedCertificate);
+        CertificateResponse response = new CertificateResponse(savedCertificate);
+
+        try {
+            emailService.sendEmail(
+                    enrollment.getStudent().getEmail(),
+                    emailTemplateService.certificateSubject(),
+                    emailTemplateService.certificateHtml(response)
+            );
+        } catch (Exception ignored) {
+        }
+
+        return response;
     }
 
     @Transactional(readOnly = true)

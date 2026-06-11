@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.novalearn.core.token.entity.RefreshToken;
 import com.novalearn.core.token.service.RefreshTokenService;
 import com.novalearn.core.auth.dto.RefreshTokenRequest;
+import com.novalearn.notification.email.service.EmailService;
+import com.novalearn.notification.email.service.EmailTemplateService;
 
 @Service
 public class AuthService {
@@ -21,17 +23,23 @@ public class AuthService {
         private final UserRepository userRepository;
         private final PasswordEncoder passwordEncoder;
         private final JwtService jwtService;
+        private final EmailService emailService;
+        private final EmailTemplateService emailTemplateService;
 
         public AuthService(
                 UserRepository userRepository,
                 PasswordEncoder passwordEncoder,
                 JwtService jwtService,
-                RefreshTokenService refreshTokenService
+                RefreshTokenService refreshTokenService,
+                EmailService emailService,
+                EmailTemplateService emailTemplateService
         ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
+        this.emailService = emailService;
+        this.emailTemplateService = emailTemplateService;
         }
 
         @Transactional
@@ -58,6 +66,15 @@ public class AuthService {
 
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(savedUser);
 
+        try {
+        emailService.sendEmail(
+                savedUser.getEmail(),
+                emailTemplateService.welcomeSubject(),
+                emailTemplateService.welcomeHtml(savedUser)
+        );
+        } catch (Exception ignored) {
+        }
+
         return new AuthResponse(
         accessToken,
         refreshToken.getToken(),
@@ -65,7 +82,8 @@ public class AuthService {
         savedUser.getEmail(),
         savedUser.getRole().name(),
         savedUser.getStatus().name()
-);
+        );
+        
         }
 
         @Transactional
