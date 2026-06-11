@@ -6,12 +6,14 @@ import com.novalearn.core.user.AdminProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import com.novalearn.config.resend.ResendProperties;
 
 @SpringBootApplication
 @EnableConfigurationProperties({
         JwtProperties.class,
         AdminProperties.class,
-        CloudinaryProperties.class
+        CloudinaryProperties.class,
+        ResendProperties.class
 })
 public class NovalearnBackendApplication {
 
