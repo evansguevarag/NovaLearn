@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.novalearn.notification.email.service.EmailService;
 import com.novalearn.notification.email.service.EmailTemplateService;
+import com.novalearn.notification.internal.enums.NotificationType;
+import com.novalearn.notification.internal.service.UserNotificationService;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -20,17 +22,20 @@ public class CertificateService {
     private final EnrollmentRepository enrollmentRepository;
     private final EmailService emailService;
     private final EmailTemplateService emailTemplateService;
+    private final UserNotificationService userNotificationService;
 
     public CertificateService(
             CertificateRepository certificateRepository,
             EnrollmentRepository enrollmentRepository,
             EmailService emailService,
-            EmailTemplateService emailTemplateService
+            EmailTemplateService emailTemplateService,
+            UserNotificationService userNotificationService
     ) {
         this.certificateRepository = certificateRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.emailService = emailService;
         this.emailTemplateService = emailTemplateService;
+        this.userNotificationService = userNotificationService;
     }
 
     @Transactional
@@ -58,6 +63,13 @@ public class CertificateService {
         Certificate savedCertificate = certificateRepository.save(certificate);
 
         CertificateResponse response = new CertificateResponse(savedCertificate);
+
+        userNotificationService.createSystemNotification(
+        enrollment.getStudent(),
+        "Certificado generado",
+        "Tu certificado del curso " + enrollment.getCourse().getTitle() + " esta listo. Codigo: " + response.getCertificateCode(),
+        NotificationType.CERTIFICATE
+        );
 
         try {
             emailService.sendEmail(

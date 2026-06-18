@@ -22,6 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.novalearn.notification.email.service.EmailService;
 import com.novalearn.notification.email.service.EmailTemplateService;
+import com.novalearn.notification.internal.enums.NotificationType;
+import com.novalearn.notification.internal.service.UserNotificationService;
 
 import java.util.List;
 
@@ -35,6 +37,7 @@ public class PaymentService {
     private final EnrollmentService enrollmentService;
     private final EmailService emailService;
     private final EmailTemplateService emailTemplateService;
+    private final UserNotificationService userNotificationService;
 
     public PaymentService(
             PaymentRepository paymentRepository,
@@ -43,7 +46,8 @@ public class PaymentService {
             EnrollmentRepository enrollmentRepository,
             EnrollmentService enrollmentService,
             EmailService emailService,
-            EmailTemplateService emailTemplateService
+            EmailTemplateService emailTemplateService,
+            UserNotificationService userNotificationService
     ) {
         this.paymentRepository = paymentRepository;
         this.transactionRepository = transactionRepository;
@@ -52,6 +56,7 @@ public class PaymentService {
         this.enrollmentService = enrollmentService;
         this.emailService = emailService;
         this.emailTemplateService = emailTemplateService;
+        this.userNotificationService = userNotificationService;
     }
 
     @Transactional
@@ -147,6 +152,14 @@ public class PaymentService {
             );
 
             enrollmentService.create(enrollmentRequest);
+
+            userNotificationService.createSystemNotification(
+            payment.getStudent(),
+            "Pago confirmado",
+            "Tu compra del curso " + payment.getCourse().getTitle() + " fue confirmada correctamente.",
+            NotificationType.PAYMENT
+            );
+
         }
 
         return new PaymentResponse(payment);

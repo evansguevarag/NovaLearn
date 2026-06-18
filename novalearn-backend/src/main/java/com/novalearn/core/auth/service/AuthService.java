@@ -16,6 +16,8 @@ import com.novalearn.core.token.service.RefreshTokenService;
 import com.novalearn.core.auth.dto.RefreshTokenRequest;
 import com.novalearn.notification.email.service.EmailService;
 import com.novalearn.notification.email.service.EmailTemplateService;
+import com.novalearn.notification.internal.enums.NotificationType;
+import com.novalearn.notification.internal.service.UserNotificationService;
 
 @Service
 public class AuthService {
@@ -25,6 +27,7 @@ public class AuthService {
         private final JwtService jwtService;
         private final EmailService emailService;
         private final EmailTemplateService emailTemplateService;
+        private final UserNotificationService userNotificationService;
 
         public AuthService(
                 UserRepository userRepository,
@@ -32,7 +35,8 @@ public class AuthService {
                 JwtService jwtService,
                 RefreshTokenService refreshTokenService,
                 EmailService emailService,
-                EmailTemplateService emailTemplateService
+                EmailTemplateService emailTemplateService,
+                UserNotificationService userNotificationService
         ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -40,6 +44,7 @@ public class AuthService {
         this.refreshTokenService = refreshTokenService;
         this.emailService = emailService;
         this.emailTemplateService = emailTemplateService;
+        this.userNotificationService = userNotificationService;
         }
 
         @Transactional
@@ -61,6 +66,13 @@ public class AuthService {
         user.setEmailVerified(false);
 
         User savedUser = userRepository.save(user);
+
+        userNotificationService.createSystemNotification(
+        savedUser,
+        "Bienvenido a NovaLearn",
+        "Tu cuenta fue creada correctamente. Ya puedes explorar cursos.",
+        NotificationType.SYSTEM
+        );
 
         String accessToken = jwtService.generateAccessToken(savedUser.getEmail());
 
