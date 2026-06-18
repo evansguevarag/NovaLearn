@@ -9,28 +9,32 @@ import java.util.Optional;
 
 public interface CourseRepository extends JpaRepository<Course, Long> {
 
-    boolean existsBySlug(String slug);
+        boolean existsBySlug(String slug);
 
-    Optional<Course> findByIdAndDeletedAtIsNull(Long id);
+        Optional<Course> findByIdAndDeletedAtIsNull(Long id);
 
-    Optional<Course> findBySlugAndStatusAndDeletedAtIsNull(
-            String slug,
-            CourseStatus status
-    );
+        Optional<Course> findBySlugAndStatusAndDeletedAtIsNull(
+                String slug,
+                CourseStatus status
+        );
 
-    List<Course> findByDeletedAtIsNullOrderByCreatedAtDesc();
+        List<Course> findByDeletedAtIsNullOrderByCreatedAtDesc();
 
-    List<Course> findByStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
-            CourseStatus status
-    );
+        List<Course> findByStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                CourseStatus status
+        );
 
-    List<Course> findByCategoryIdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
-            Long categoryId,
-            CourseStatus status
-    );
+        List<Course> findByCategoryIdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                Long categoryId,
+                CourseStatus status
+        );
 
-    List<Course> findByTitleContainingIgnoreCaseAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
-            String title,
-            CourseStatus status
-    );
+        List<Course> findByTitleContainingIgnoreCaseAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                String title,
+                CourseStatus status
+        );
+
+        long countByDeletedAtIsNull();
+
+        long countByStatusAndDeletedAtIsNull(CourseStatus status);
 }
