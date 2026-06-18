@@ -5,6 +5,7 @@ import com.novalearn.marketplace.dto.PublicCourseResponse;
 import com.novalearn.marketplace.service.MarketplaceService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.novalearn.marketplace.dto.CourseSearchRequest;
 
 import java.util.List;
 
@@ -42,5 +43,14 @@ public class MarketplaceController {
             @PathVariable String slug
     ) {
         return ResponseEntity.ok(marketplaceService.findBySlug(slug));
+    }
+
+    @PostMapping("/courses/advanced-search")
+    public ResponseEntity<List<PublicCourseResponse>> advancedSearch(
+            @RequestBody CourseSearchRequest request
+    ) {
+        return ResponseEntity.ok(
+                marketplaceService.advancedSearch(request)
+        );
     }
 }

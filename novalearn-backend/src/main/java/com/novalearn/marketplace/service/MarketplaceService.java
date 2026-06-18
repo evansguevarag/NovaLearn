@@ -7,6 +7,7 @@ import com.novalearn.marketplace.dto.PublicCourseDetailResponse;
 import com.novalearn.marketplace.dto.PublicCourseResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.novalearn.marketplace.dto.CourseSearchRequest;
 
 import java.util.List;
 
@@ -59,5 +60,21 @@ public class MarketplaceService {
                 .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado"));
 
         return new PublicCourseDetailResponse(course);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PublicCourseResponse> advancedSearch(CourseSearchRequest request) {
+        return courseRepository
+                .searchPublishedCourses(
+                        request.getQuery(),
+                        request.getCategoryId(),
+                        request.getCourseType(),
+                        request.getLevel(),
+                        request.getMinPrice(),
+                        request.getMaxPrice()
+                )
+                .stream()
+                .map(PublicCourseResponse::new)
+                .toList();
     }
 }
