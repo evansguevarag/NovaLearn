@@ -38,6 +38,15 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
                 CourseStatus status
         );
 
+        List<Course> findByInstructorIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long instructorId);
+
+        long countByInstructorIdAndDeletedAtIsNull(Long instructorId);
+
+        long countByInstructorIdAndStatusAndDeletedAtIsNull(
+                Long instructorId,
+                CourseStatus status
+        );
+
         @Query("""
                 SELECT c
                 FROM Course c

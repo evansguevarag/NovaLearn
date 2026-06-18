@@ -23,6 +23,12 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
 
     long countByCompletedAtIsNotNullAndDeletedAtIsNull();
 
+    List<Enrollment> findByCourseInstructorIdAndDeletedAtIsNullOrderByEnrolledAtDesc(Long instructorId);
+
+    long countByCourseInstructorIdAndDeletedAtIsNull(Long instructorId);
+
+    long countByCourseInstructorIdAndCompletedAtIsNotNullAndDeletedAtIsNull(Long instructorId);
+
     @Query(
             value = """
                     SELECT 
