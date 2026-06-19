@@ -11,6 +11,9 @@ import com.novalearn.notification.email.service.EmailService;
 import com.novalearn.notification.email.service.EmailTemplateService;
 import com.novalearn.notification.internal.enums.NotificationType;
 import com.novalearn.notification.internal.service.UserNotificationService;
+import com.novalearn.audit.enums.AuditAction;
+import com.novalearn.audit.service.AuditLogService;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -23,23 +26,26 @@ public class CertificateService {
     private final EmailService emailService;
     private final EmailTemplateService emailTemplateService;
     private final UserNotificationService userNotificationService;
+    private final AuditLogService auditLogService;
 
     public CertificateService(
             CertificateRepository certificateRepository,
             EnrollmentRepository enrollmentRepository,
             EmailService emailService,
             EmailTemplateService emailTemplateService,
-            UserNotificationService userNotificationService
+            UserNotificationService userNotificationService,
+            AuditLogService auditLogService
     ) {
         this.certificateRepository = certificateRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.emailService = emailService;
         this.emailTemplateService = emailTemplateService;
         this.userNotificationService = userNotificationService;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional
-    public CertificateResponse generateCertificate(Long enrollmentId) {
+    public CertificateResponse generateCertificate(Long enrollmentId, HttpServletRequest httpRequest) {
 
         Enrollment enrollment = enrollmentRepository.findByIdAndDeletedAtIsNull(enrollmentId)
                 .orElseThrow(() -> new IllegalArgumentException("Matricula no encontrada"));
@@ -63,6 +69,15 @@ public class CertificateService {
         Certificate savedCertificate = certificateRepository.save(certificate);
 
         CertificateResponse response = new CertificateResponse(savedCertificate);
+
+        auditLogService.register(
+        enrollment.getStudent(),
+        AuditAction.CERTIFICATE_GENERATED,
+        "Certificate",
+        String.valueOf(savedCertificate.getId()),
+        "Certificado generado para el curso " + enrollment.getCourse().getTitle(),
+        httpRequest
+        );
 
         userNotificationService.createSystemNotification(
         enrollment.getStudent(),

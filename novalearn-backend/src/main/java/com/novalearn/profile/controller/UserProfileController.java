@@ -10,49 +10,51 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/v1/profile")
 public class UserProfileController {
 
-    private final UserProfileService profileService;
+        private final UserProfileService profileService;
 
-    public UserProfileController(UserProfileService profileService) {
-        this.profileService = profileService;
-    }
+        public UserProfileController(UserProfileService profileService) {
+                this.profileService = profileService;
+        }
 
-    @GetMapping
-    public ResponseEntity<UserProfileResponse> getProfile(
-            Authentication authentication
-    ) {
-        User user = (User) authentication.getPrincipal();
+        @GetMapping
+        public ResponseEntity<UserProfileResponse> getProfile(
+                Authentication authentication
+        ) {
+                User user = (User) authentication.getPrincipal();
 
-        return ResponseEntity.ok(
-                profileService.getProfile(user)
-        );
-    }
+                return ResponseEntity.ok(
+                        profileService.getProfile(user)
+                );
+        }
 
-    @PutMapping
-    public ResponseEntity<UserProfileResponse> updateProfile(
-            Authentication authentication,
-            @Valid @RequestBody UpdateProfileRequest request
-    ) {
+        @PutMapping
+        public ResponseEntity<UserProfileResponse> updateProfile(
+                Authentication authentication,
+                @Valid @RequestBody UpdateProfileRequest request
+        ) {
         User user = (User) authentication.getPrincipal();
 
         return ResponseEntity.ok(
                 profileService.updateProfile(user, request)
         );
-    }
+        }
 
-    @PatchMapping("/change-password")
-    public ResponseEntity<ProfileMessageResponse> changePassword(
-            Authentication authentication,
-            @Valid @RequestBody ChangePasswordRequest request
-    ) {
+        @PatchMapping("/change-password")
+        public ResponseEntity<ProfileMessageResponse> changePassword(
+                Authentication authentication,
+                @Valid @RequestBody ChangePasswordRequest request,
+                HttpServletRequest httpRequest
+        ) {
         User user = (User) authentication.getPrincipal();
 
         return ResponseEntity.ok(
-                profileService.changePassword(user, request)
+                profileService.changePassword(user, request, httpRequest)
         );
-    }
+        }
 }

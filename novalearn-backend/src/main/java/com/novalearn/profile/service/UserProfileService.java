@@ -9,19 +9,25 @@ import com.novalearn.profile.dto.UserProfileResponse;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.novalearn.audit.enums.AuditAction;
+import com.novalearn.audit.service.AuditLogService;
+import jakarta.servlet.http.HttpServletRequest;
 
 @Service
 public class UserProfileService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditLogService auditLogService;
 
     public UserProfileService(
-            UserRepository userRepository,
-            PasswordEncoder passwordEncoder
+        UserRepository userRepository,
+        PasswordEncoder passwordEncoder,
+        AuditLogService auditLogService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional(readOnly = true)
@@ -42,7 +48,11 @@ public class UserProfileService {
     }
 
     @Transactional
-    public ProfileMessageResponse changePassword(User authenticatedUser, ChangePasswordRequest request) {
+    public ProfileMessageResponse changePassword(
+        User authenticatedUser,
+        ChangePasswordRequest request,
+        HttpServletRequest httpRequest
+) {
 
         User user = userRepository.findById(authenticatedUser.getId())
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
@@ -60,6 +70,15 @@ public class UserProfileService {
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+
+        auditLogService.register(
+                user,
+                AuditAction.PASSWORD_CHANGED,
+                "User",
+                user.getId().toString(),
+                "Contraseña actualizada",
+                httpRequest
+        );
 
         return new ProfileMessageResponse("Contraseña actualizada correctamente");
     }

@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
 
@@ -18,60 +19,61 @@ import java.util.List;
 @RequestMapping("/api/v1")
 public class PaymentController {
 
-    private final PaymentService paymentService;
+        private final PaymentService paymentService;
 
-    public PaymentController(PaymentService paymentService) {
-        this.paymentService = paymentService;
-    }
+        public PaymentController(PaymentService paymentService) {
+                this.paymentService = paymentService;
+        }
 
-    @PostMapping("/student/payments/create")
-    public ResponseEntity<PaymentResponse> createPayment(
-            Authentication authentication,
-            @Valid @RequestBody CreatePaymentRequest request
-    ) {
-        User student = (User) authentication.getPrincipal();
+        @PostMapping("/student/payments/create")
+        public ResponseEntity<PaymentResponse> createPayment(
+                Authentication authentication,
+                @Valid @RequestBody CreatePaymentRequest request
+        ) {
+                User student = (User) authentication.getPrincipal();
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(paymentService.createPayment(student, request));
-    }
+                return ResponseEntity
+                        .status(HttpStatus.CREATED)
+                        .body(paymentService.createPayment(student, request));
+        }
 
-    @PostMapping("/student/payments/confirm")
-    public ResponseEntity<PaymentResponse> confirmPayment(
-            Authentication authentication,
-            @Valid @RequestBody ConfirmPaymentRequest request
-    ) {
+        @PostMapping("/student/payments/confirm")
+        public ResponseEntity<PaymentResponse> confirmPayment(
+                Authentication authentication,
+                @Valid @RequestBody ConfirmPaymentRequest request,
+                HttpServletRequest httpRequest
+        ) {
         User student = (User) authentication.getPrincipal();
 
         return ResponseEntity.ok(
-                paymentService.confirmPayment(student, request)
+                paymentService.confirmPayment(student, request, httpRequest)
         );
-    }
+        }
 
-    @GetMapping("/student/payments")
-    public ResponseEntity<List<PaymentResponse>> findMyPayments(
-            Authentication authentication
-    ) {
+        @GetMapping("/student/payments")
+        public ResponseEntity<List<PaymentResponse>> findMyPayments(
+                Authentication authentication
+        ) {
         User student = (User) authentication.getPrincipal();
 
         return ResponseEntity.ok(
                 paymentService.findMyPayments(student)
         );
-    }
+        }
 
-    @GetMapping("/admin/payments")
-    public ResponseEntity<List<PaymentResponse>> findAll() {
-        return ResponseEntity.ok(
-                paymentService.findAll()
-        );
-    }
+        @GetMapping("/admin/payments")
+        public ResponseEntity<List<PaymentResponse>> findAll() {
+                return ResponseEntity.ok(
+                        paymentService.findAll()
+                );
+        }
 
-    @GetMapping("/admin/payments/{paymentId}/transactions")
-    public ResponseEntity<List<PaymentTransactionResponse>> findTransactions(
-            @PathVariable Long paymentId
-    ) {
-        return ResponseEntity.ok(
-                paymentService.findTransactions(paymentId)
-        );
-    }
+        @GetMapping("/admin/payments/{paymentId}/transactions")
+        public ResponseEntity<List<PaymentTransactionResponse>> findTransactions(
+                @PathVariable Long paymentId
+        ) {
+                return ResponseEntity.ok(
+                        paymentService.findTransactions(paymentId)
+                );
+        }
 }

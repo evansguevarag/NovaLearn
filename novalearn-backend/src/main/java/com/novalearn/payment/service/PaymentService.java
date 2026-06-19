@@ -24,6 +24,9 @@ import com.novalearn.notification.email.service.EmailService;
 import com.novalearn.notification.email.service.EmailTemplateService;
 import com.novalearn.notification.internal.enums.NotificationType;
 import com.novalearn.notification.internal.service.UserNotificationService;
+import com.novalearn.audit.enums.AuditAction;
+import com.novalearn.audit.service.AuditLogService;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
 
@@ -38,6 +41,7 @@ public class PaymentService {
     private final EmailService emailService;
     private final EmailTemplateService emailTemplateService;
     private final UserNotificationService userNotificationService;
+    private final AuditLogService auditLogService;
 
     public PaymentService(
             PaymentRepository paymentRepository,
@@ -47,7 +51,8 @@ public class PaymentService {
             EnrollmentService enrollmentService,
             EmailService emailService,
             EmailTemplateService emailTemplateService,
-            UserNotificationService userNotificationService
+            UserNotificationService userNotificationService,
+            AuditLogService auditLogService
     ) {
         this.paymentRepository = paymentRepository;
         this.transactionRepository = transactionRepository;
@@ -57,6 +62,7 @@ public class PaymentService {
         this.emailService = emailService;
         this.emailTemplateService = emailTemplateService;
         this.userNotificationService = userNotificationService;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional
@@ -101,12 +107,11 @@ public class PaymentService {
                 PaymentStatus.PENDING,
                 "Pago creado internamente. Pendiente de confirmacion Culqi."
         );
-
         return new PaymentResponse(savedPayment);
     }
 
     @Transactional
-    public PaymentResponse confirmPayment(User student, ConfirmPaymentRequest request) {
+    public PaymentResponse confirmPayment(User student, ConfirmPaymentRequest request, HttpServletRequest httpRequest) {
 
         Payment payment = paymentRepository.findByIdAndStudentId(
                         request.getPaymentId(),
@@ -134,6 +139,15 @@ public class PaymentService {
         }
 
         payment.markAsPaid(request.getProviderPaymentId());
+
+        auditLogService.register(
+        payment.getStudent(),
+        AuditAction.PAYMENT_CONFIRMED,
+        "Payment",
+        String.valueOf(payment.getId()),
+        "Pago confirmado para el curso " + payment.getCourse().getTitle(),
+        httpRequest
+        );
 
         registerTransaction(
                 payment,
