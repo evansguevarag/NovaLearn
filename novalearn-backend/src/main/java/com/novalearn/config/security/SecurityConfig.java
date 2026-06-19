@@ -14,47 +14,53 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+        private final JwtAuthenticationFilter jwtAuthenticationFilter;
+        private final CorsConfigurationSource corsConfigurationSource;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-    }
+        public SecurityConfig(
+                JwtAuthenticationFilter jwtAuthenticationFilter,
+                CorsConfigurationSource corsConfigurationSource
+        ) {
+                this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+                this.corsConfigurationSource = corsConfigurationSource;
+        }
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
-                .csrf(AbstractHttpConfigurer::disable)
-                .cors(AbstractHttpConfigurer::disable)
-                .formLogin(AbstractHttpConfigurer::disable)
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .logout(AbstractHttpConfigurer::disable)
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
-                .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/auth/**").permitAll()
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                .requestMatchers("/", "/api/v1/public/**").permitAll()
-                .requestMatchers("/api/v1/certificates/code/**").permitAll()
+        @Bean
+        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+                return http
+                        .csrf(AbstractHttpConfigurer::disable)
+                        .cors(cors -> cors.configurationSource(corsConfigurationSource))
+                        .formLogin(AbstractHttpConfigurer::disable)
+                        .httpBasic(AbstractHttpConfigurer::disable)
+                        .logout(AbstractHttpConfigurer::disable)
+                        .sessionManagement(session ->
+                                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        )
+                        .authorizeHttpRequests(auth -> auth
+                                .requestMatchers("/api/v1/auth/**").permitAll()
+                                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                                .requestMatchers("/", "/api/v1/public/**").permitAll()
+                                .requestMatchers("/api/v1/certificates/code/**").permitAll()
 
-                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/v1/certificates/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/v1/instructor/**").hasAnyRole("ADMIN", "INSTRUCTOR")
-                .requestMatchers("/api/v1/student/**").hasAnyRole("ADMIN", "STUDENT")
-                .requestMatchers("/api/v1/certificates/enrollment/**").hasAnyRole("ADMIN", "STUDENT")
+                                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                                .requestMatchers("/api/v1/certificates/admin/**").hasRole("ADMIN")
+                                .requestMatchers("/api/v1/instructor/**").hasAnyRole("ADMIN", "INSTRUCTOR")
+                                .requestMatchers("/api/v1/student/**").hasAnyRole("ADMIN", "STUDENT")
+                                .requestMatchers("/api/v1/certificates/enrollment/**").hasAnyRole("ADMIN", "STUDENT")
 
-                .anyRequest().authenticated()
-        )
-                .addFilterBefore(
-                        jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class
-                )
-                .build();
+                                .anyRequest().authenticated()
+                        )
+                        .addFilterBefore(
+                                jwtAuthenticationFilter,
+                                UsernamePasswordAuthenticationFilter.class
+                        )
+                        .build();
         }
 
         @Bean

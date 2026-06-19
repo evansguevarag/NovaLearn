@@ -11,35 +11,43 @@ import java.util.List;
 @Configuration
 public class CorsConfig {
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
+        @Bean
+        public CorsConfigurationSource corsConfigurationSource() {
+                CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:4200"
-        ));
+                configuration.setAllowedOrigins(List.of(
+                        "http://localhost:3000",
+                        "http://127.0.0.1:3000",
+                        "http://localhost:4200"
+                ));
 
-        configuration.setAllowedMethods(List.of(
-                "GET",
-                "POST",
-                "PUT",
-                "PATCH",
-                "DELETE",
-                "OPTIONS"
-        ));
+                configuration.setAllowedMethods(List.of(
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "PATCH",
+                        "DELETE",
+                        "OPTIONS"
+                ));
 
-        configuration.setAllowedHeaders(List.of(
-                "Authorization",
-                "Content-Type"
-        ));
+                configuration.setAllowedHeaders(List.of(
+                        "Authorization",
+                        "Content-Type",
+                        "Accept"
+                ));
 
-        configuration.setAllowCredentials(true);
+                configuration.setExposedHeaders(List.of(
+                        "Authorization"
+                ));
 
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
+                configuration.setAllowCredentials(true);
+                configuration.setMaxAge(3600L);
 
-        source.registerCorsConfiguration("/**", configuration);
+                UrlBasedCorsConfigurationSource source =
+                        new UrlBasedCorsConfigurationSource();
 
-        return source;
-    }
+                source.registerCorsConfiguration("/**", configuration);
+
+                return source;
+        }
 }
