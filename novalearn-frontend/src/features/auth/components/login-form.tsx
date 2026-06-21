@@ -57,14 +57,14 @@ import {
 
         saveAuthSession(auth);
         router.push(getDashboardPathByRole(auth.role));
-        } catch (error) {
-        setServerError(
-            getApiErrorMessage(
-            error,
-            "Correo o contraseña incorrectos. Verifica tus datos."
-            )
-        );
-        }
+            } catch (error) {
+            setServerError(
+                getApiErrorMessage(
+                error,
+                "Correo o contraseña incorrectos. Verifica tus datos."
+                )
+            );
+            }
     }
 
     return (

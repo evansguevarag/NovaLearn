@@ -5,7 +5,6 @@ const REFRESH_TOKEN_KEY = "novalearn_refresh_token";
 const USER_KEY = "novalearn_user";
 
 export const AUTH_STORAGE_EVENT = "novalearn-auth-storage";
-
 export function saveAuthSession(auth: AuthResponse): void {
   if (typeof window === "undefined") return;
 

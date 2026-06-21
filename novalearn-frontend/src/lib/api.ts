@@ -44,7 +44,6 @@ export const api = axios.create({
             }
         }
         }
-
         return Promise.reject(error);
     }
 );

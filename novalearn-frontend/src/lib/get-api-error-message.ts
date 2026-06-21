@@ -27,6 +27,5 @@ export function getApiErrorMessage(
         return "Error interno del servidor.";
         }
     }
-
     return fallback;
 }
