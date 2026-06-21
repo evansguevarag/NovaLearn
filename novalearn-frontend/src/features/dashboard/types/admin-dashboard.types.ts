@@ -16,4 +16,25 @@ export interface AdminDashboardSummary {
     email: string;
     status: string;
     createdAt: string;
+    }
+
+    export interface LatestEnrollment {
+    id: number;
+    studentId: number;
+    studentEmail: string;
+    courseId: number;
+    courseTitle: string;
+    progressPercentage: number;
+    enrolledAt: string;
+    }
+
+    export interface TopCourse {
+    courseId: number;
+    courseTitle: string;
+    totalEnrollments: number;
+    }
+
+    export interface RevenueByMonth {
+    month: string;
+    revenue: number;
 }
