@@ -15,7 +15,11 @@ export function LogoutButton() {
     }
 
     return (
-        <Button variant="outline" onClick={handleLogout}>
+        <Button
+        variant="outline"
+        className="w-full justify-start"
+        onClick={handleLogout}
+        >
         <LogOut className="mr-2 h-4 w-4" />
         Cerrar sesión
         </Button>

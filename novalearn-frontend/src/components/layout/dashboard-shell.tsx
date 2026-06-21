@@ -1,6 +1,4 @@
-import { GraduationCap } from "lucide-react";
-
-import { LogoutButton } from "@/components/shared/logout-button";
+import { Sidebar } from "@/components/layout/sidebar";
 
 interface DashboardShellProps {
     title: string;
@@ -14,26 +12,24 @@ interface DashboardShellProps {
     children,
     }: DashboardShellProps) {
     return (
-        <main className="min-h-screen bg-muted/30">
-        <header className="border-b bg-background">
-            <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-            <div className="flex items-center gap-2 font-semibold">
-                <GraduationCap className="h-5 w-5" />
-                NovaLearn
-            </div>
+        <div className="flex min-h-screen bg-muted/20">
+        <Sidebar />
 
-            <LogoutButton />
-            </div>
-        </header>
+        <main className="flex-1 overflow-x-hidden">
+            <section className="px-8 py-6">
+            <div className="mb-6">
+                <h1 className="text-2xl font-bold tracking-tight">
+                {title}
+                </h1>
 
-        <section className="mx-auto max-w-7xl px-6 py-8">
-            <div className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-            <p className="mt-2 text-muted-foreground">{description}</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                {description}
+                </p>
             </div>
 
             {children}
-        </section>
+            </section>
         </main>
+        </div>
     );
 }

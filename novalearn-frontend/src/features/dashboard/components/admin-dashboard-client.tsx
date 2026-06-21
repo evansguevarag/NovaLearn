@@ -11,9 +11,18 @@ import {
     } from "lucide-react";
 
     import { DashboardShell } from "@/components/layout/dashboard-shell";
-    import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+    import {
+    Alert,
+    AlertDescription,
+    AlertTitle,
+    } from "@/components/ui/alert";
     import { Badge } from "@/components/ui/badge";
-    import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+    import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    } from "@/components/ui/card";
     import {
     Table,
     TableBody,
@@ -23,6 +32,7 @@ import {
     TableRow,
     } from "@/components/ui/table";
     import { useAuthGuard } from "@/hooks/use-auth-guard";
+
     import {
     getAdminDashboardSummary,
     getLatestEnrollments,
@@ -30,6 +40,7 @@ import {
     getRevenueByMonth,
     getTopCourses,
     } from "@/features/dashboard/services/admin-dashboard.service";
+
     import type {
     AdminDashboardSummary,
     LatestEnrollment,
@@ -41,9 +52,11 @@ import {
     export function AdminDashboardClient() {
     const { isChecking } = useAuthGuard(["ADMIN"]);
 
-    const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
+    const [summary, setSummary] =
+        useState<AdminDashboardSummary | null>(null);
     const [students, setStudents] = useState<LatestStudent[]>([]);
-    const [enrollments, setEnrollments] = useState<LatestEnrollment[]>([]);
+    const [enrollments, setEnrollments] =
+        useState<LatestEnrollment[]>([]);
     const [topCourses, setTopCourses] = useState<TopCourse[]>([]);
     const [revenue, setRevenue] = useState<RevenueByMonth[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -77,13 +90,15 @@ import {
             setTopCourses(topCoursesData);
             setRevenue(revenueData);
         } catch {
-            setError("No se pudo cargar el dashboard administrativo.");
+            setError(
+            "No se pudo cargar el dashboard administrativo."
+            );
         } finally {
             setIsLoading(false);
         }
         }
 
-        loadDashboard();
+        void loadDashboard();
     }, [isChecking]);
 
     if (isChecking) {
@@ -111,17 +126,52 @@ import {
 
         {summary && !isLoading && (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <AdminMetricCard title="Estudiantes" value={summary.totalStudents} description="Usuarios estudiantes" icon={Users} />
-            <AdminMetricCard title="Instructores" value={summary.totalInstructors} description="Usuarios instructores" icon={GraduationCap} />
-            <AdminMetricCard title="Cursos" value={summary.totalCourses} description={`${summary.publishedCourses} publicados`} icon={BookOpen} />
-            <AdminMetricCard title="Matrículas" value={summary.totalEnrollments} description={`${summary.completedEnrollments} completadas`} icon={Medal} />
-            <AdminMetricCard title="Certificados" value={summary.totalCertificates} description="Certificados generados" icon={Medal} />
-            <AdminMetricCard title="Ingresos" value={`S/ ${summary.totalRevenue.toFixed(2)}`} description="Ingresos totales" icon={Wallet} />
+            <AdminMetricCard
+                title="Estudiantes"
+                value={summary.totalStudents}
+                description="Usuarios estudiantes"
+                icon={Users}
+            />
+
+            <AdminMetricCard
+                title="Instructores"
+                value={summary.totalInstructors}
+                description="Usuarios instructores"
+                icon={GraduationCap}
+            />
+
+            <AdminMetricCard
+                title="Cursos"
+                value={summary.totalCourses}
+                description={`${summary.publishedCourses} publicados`}
+                icon={BookOpen}
+            />
+
+            <AdminMetricCard
+                title="Matrículas"
+                value={summary.totalEnrollments}
+                description={`${summary.completedEnrollments} completadas`}
+                icon={Medal}
+            />
+
+            <AdminMetricCard
+                title="Certificados"
+                value={summary.totalCertificates}
+                description="Certificados generados"
+                icon={Medal}
+            />
+
+            <AdminMetricCard
+                title="Ingresos"
+                value={formatCurrency(summary.totalRevenue)}
+                description="Ingresos totales"
+                icon={Wallet}
+            />
             </div>
         )}
 
         {!isLoading && (
-            <div className="mt-6 grid gap-6 xl:grid-cols-2">
+            <div className="mt-6 grid min-w-0 gap-6 xl:grid-cols-2">
             <StudentsTable students={students} />
             <EnrollmentsTable enrollments={enrollments} />
             <TopCoursesTable courses={topCourses} />
@@ -139,111 +189,302 @@ import {
     icon: React.ElementType;
     }
 
-    function AdminMetricCard({ title, value, description, icon: Icon }: AdminMetricCardProps) {
+    function AdminMetricCard({
+    title,
+    value,
+    description,
+    icon: Icon,
+    }: AdminMetricCardProps) {
     return (
         <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+            {title}
+            </CardTitle>
+
             <Icon className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
+
         <CardContent>
             <p className="text-3xl font-bold">{value}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+            {description}
+            </p>
         </CardContent>
         </Card>
     );
     }
 
-    function StudentsTable({ students }: { students: LatestStudent[] }) {
+    function StudentsTable({
+    students,
+    }: {
+    students: LatestStudent[];
+    }) {
     return (
-        <Card>
-        <CardHeader>
-            <CardTitle>Últimos estudiantes</CardTitle>
-        </CardHeader>
-        <CardContent>
-            <Table>
-            <TableHeader><TableRow><TableHead>Nombre</TableHead><TableHead>Correo</TableHead><TableHead>Estado</TableHead></TableRow></TableHeader>
+        <DashboardTableCard title="Últimos estudiantes">
+        <Table className="table-fixed">
+            <TableHeader>
+            <TableRow>
+                <TableHead className="w-[30%] whitespace-normal">
+                Nombre
+                </TableHead>
+
+                <TableHead className="w-[45%] whitespace-normal">
+                Correo
+                </TableHead>
+
+                <TableHead className="w-[25%] whitespace-normal">
+                Estado
+                </TableHead>
+            </TableRow>
+            </TableHeader>
+
             <TableBody>
-                {students.map((student) => (
+            {students.map((student) => (
                 <TableRow key={student.id}>
-                    <TableCell>{student.firstName} {student.lastName}</TableCell>
-                    <TableCell>{student.email}</TableCell>
-                    <TableCell><Badge variant="secondary">{student.status}</Badge></TableCell>
+                <TableCell className="whitespace-normal align-top">
+                    <p className="wrap-break-word font-medium">
+                    {student.firstName} {student.lastName}
+                    </p>
+                </TableCell>
+
+                <TableCell className="whitespace-normal align-top">
+                    <p
+                    className="break-all text-sm text-muted-foreground"
+                    title={student.email}
+                    >
+                    {student.email}
+                    </p>
+                </TableCell>
+
+                <TableCell className="whitespace-normal align-top">
+                    <StatusBadge status={student.status} />
+                </TableCell>
                 </TableRow>
-                ))}
+            ))}
+
+            {students.length === 0 && (
+                <TableRow>
+                <TableCell
+                    colSpan={3}
+                    className="py-8 text-center text-muted-foreground"
+                >
+                    No hay estudiantes recientes.
+                </TableCell>
+                </TableRow>
+            )}
             </TableBody>
-            </Table>
-        </CardContent>
-        </Card>
+        </Table>
+        </DashboardTableCard>
     );
     }
 
-    function EnrollmentsTable({ enrollments }: { enrollments: LatestEnrollment[] }) {
+    function EnrollmentsTable({
+    enrollments,
+    }: {
+    enrollments: LatestEnrollment[];
+    }) {
     return (
-        <Card>
-        <CardHeader>
-            <CardTitle>Últimas matrículas</CardTitle>
-        </CardHeader>
-        <CardContent>
-            <Table>
-            <TableHeader><TableRow><TableHead>Estudiante</TableHead><TableHead>Curso</TableHead><TableHead>Progreso</TableHead></TableRow></TableHeader>
+        <DashboardTableCard title="Últimas matrículas">
+        <Table className="table-fixed">
+            <TableHeader>
+            <TableRow>
+                <TableHead className="w-[36%] whitespace-normal">
+                Estudiante
+                </TableHead>
+
+                <TableHead className="w-[48%] whitespace-normal">
+                Curso
+                </TableHead>
+
+                <TableHead className="w-[16%] whitespace-normal text-right">
+                Progreso
+                </TableHead>
+            </TableRow>
+            </TableHeader>
+
             <TableBody>
-                {enrollments.map((enrollment) => (
+            {enrollments.map((enrollment) => (
                 <TableRow key={enrollment.id}>
-                    <TableCell>{enrollment.studentEmail}</TableCell>
-                    <TableCell>{enrollment.courseTitle}</TableCell>
-                    <TableCell>{enrollment.progressPercentage}%</TableCell>
+                <TableCell className="whitespace-normal align-top">
+                    <p
+                    className="break-all text-sm"
+                    title={enrollment.studentEmail}
+                    >
+                    {enrollment.studentEmail}
+                    </p>
+                </TableCell>
+
+                <TableCell className="whitespace-normal align-top">
+                    <p className="wrap-break-wordword leading-5">
+                    {enrollment.courseTitle}
+                    </p>
+                </TableCell>
+
+                <TableCell className="whitespace-normal text-right align-top font-medium">
+                    {enrollment.progressPercentage}%
+                </TableCell>
                 </TableRow>
-                ))}
+            ))}
+
+            {enrollments.length === 0 && (
+                <TableRow>
+                <TableCell
+                    colSpan={3}
+                    className="py-8 text-center text-muted-foreground"
+                >
+                    No hay matrículas recientes.
+                </TableCell>
+                </TableRow>
+            )}
             </TableBody>
-            </Table>
-        </CardContent>
-        </Card>
+        </Table>
+        </DashboardTableCard>
     );
     }
 
-    function TopCoursesTable({ courses }: { courses: TopCourse[] }) {
+    function TopCoursesTable({
+    courses,
+    }: {
+    courses: TopCourse[];
+    }) {
     return (
-        <Card>
-        <CardHeader>
-            <CardTitle>Cursos más matriculados</CardTitle>
-        </CardHeader>
-        <CardContent>
-            <Table>
-            <TableHeader><TableRow><TableHead>Curso</TableHead><TableHead>Matrículas</TableHead></TableRow></TableHeader>
+        <DashboardTableCard title="Cursos más matriculados">
+        <Table className="table-fixed">
+            <TableHeader>
+            <TableRow>
+                <TableHead className="w-[75%] whitespace-normal">
+                Curso
+                </TableHead>
+
+                <TableHead className="w-[25%] whitespace-normal text-right">
+                Matrículas
+                </TableHead>
+            </TableRow>
+            </TableHeader>
+
             <TableBody>
-                {courses.map((course) => (
+            {courses.map((course) => (
                 <TableRow key={course.courseId}>
-                    <TableCell>{course.courseTitle}</TableCell>
-                    <TableCell>{course.totalEnrollments}</TableCell>
+                <TableCell className="whitespace-normal">
+                    <p className="wrap-break-word">
+                    {course.courseTitle}
+                    </p>
+                </TableCell>
+
+                <TableCell className="text-right font-medium">
+                    {course.totalEnrollments}
+                </TableCell>
                 </TableRow>
-                ))}
+            ))}
+
+            {courses.length === 0 && (
+                <TableRow>
+                <TableCell
+                    colSpan={2}
+                    className="py-8 text-center text-muted-foreground"
+                >
+                    No hay cursos con matrículas.
+                </TableCell>
+                </TableRow>
+            )}
             </TableBody>
-            </Table>
-        </CardContent>
+        </Table>
+        </DashboardTableCard>
+    );
+    }
+
+    function RevenueTable({
+    revenue,
+    }: {
+    revenue: RevenueByMonth[];
+    }) {
+    return (
+        <DashboardTableCard title="Ingresos mensuales">
+        <Table className="table-fixed">
+            <TableHeader>
+            <TableRow>
+                <TableHead className="w-1/2 whitespace-normal">
+                Mes
+                </TableHead>
+
+                <TableHead className="w-1/2 whitespace-normal text-right">
+                Ingreso
+                </TableHead>
+            </TableRow>
+            </TableHeader>
+
+            <TableBody>
+            {revenue.map((item) => (
+                <TableRow key={item.month}>
+                <TableCell className="whitespace-normal">
+                    {item.month}
+                </TableCell>
+
+                <TableCell className="text-right font-medium">
+                    {formatCurrency(item.revenue)}
+                </TableCell>
+                </TableRow>
+            ))}
+
+            {revenue.length === 0 && (
+                <TableRow>
+                <TableCell
+                    colSpan={2}
+                    className="py-8 text-center text-muted-foreground"
+                >
+                    No hay ingresos registrados.
+                </TableCell>
+                </TableRow>
+            )}
+            </TableBody>
+        </Table>
+        </DashboardTableCard>
+    );
+    }
+
+    interface DashboardTableCardProps {
+    title: string;
+    children: React.ReactNode;
+    }
+
+    function DashboardTableCard({
+    title,
+    children,
+    }: DashboardTableCardProps) {
+    return (
+        <Card className="min-w-0 overflow-hidden">
+        <CardHeader>
+            <CardTitle className="text-lg">{title}</CardTitle>
+        </CardHeader>
+
+        <CardContent className="min-w-0">{children}</CardContent>
         </Card>
     );
     }
 
-    function RevenueTable({ revenue }: { revenue: RevenueByMonth[] }) {
+    function StatusBadge({ status }: { status: string }) {
+    const labels: Record<string, string> = {
+        ACTIVE: "Activo",
+        INACTIVE: "Inactivo",
+        PENDING_VERIFICATION: "Pendiente",
+        SUSPENDED: "Suspendido",
+    };
+
     return (
-        <Card>
-        <CardHeader>
-            <CardTitle>Ingresos mensuales</CardTitle>
-        </CardHeader>
-        <CardContent>
-            <Table>
-            <TableHeader><TableRow><TableHead>Mes</TableHead><TableHead>Ingreso</TableHead></TableRow></TableHeader>
-            <TableBody>
-                {revenue.map((item) => (
-                <TableRow key={item.month}>
-                    <TableCell>{item.month}</TableCell>
-                    <TableCell>S/ {item.revenue.toFixed(2)}</TableCell>
-                </TableRow>
-                ))}
-            </TableBody>
-            </Table>
-        </CardContent>
-        </Card>
+        <Badge
+        variant={status === "ACTIVE" ? "default" : "secondary"}
+        className="max-w-full whitespace-normal text-center"
+        >
+        {labels[status] ?? status}
+        </Badge>
     );
+    }
+
+    function formatCurrency(value: number): string {
+    return new Intl.NumberFormat("es-PE", {
+        style: "currency",
+        currency: "PEN",
+    }).format(value);
 }

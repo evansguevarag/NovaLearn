@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+
 import "./globals.css";
 
-export const metadata: Metadata = {
+const inter = Inter({
+    subsets: ["latin"],
+    display: "swap",
+    });
+
+    export const metadata: Metadata = {
     title: "NovaLearn",
     description: "Plataforma LMS con Next.js y Spring Boot",
     };
@@ -13,7 +20,9 @@ export const metadata: Metadata = {
     }>) {
     return (
         <html lang="es">
-        <body>{children}</body>
+        <body className={inter.className}>
+            {children}
+        </body>
         </html>
     );
 }
