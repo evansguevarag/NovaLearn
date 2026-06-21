@@ -53,6 +53,7 @@ import {
 
         try {
         const auth = await login(values);
+
         saveAuthSession(auth);
         router.push(getDashboardPathByRole(auth.role));
         } catch {
