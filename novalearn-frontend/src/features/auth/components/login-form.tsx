@@ -5,6 +5,7 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { getApiErrorMessage } from "@/lib/get-api-error-message";
 
 import { login } from "@/features/auth/services/auth.service";
 import { getDashboardPathByRole } from "@/features/auth/services/redirect-by-role";
@@ -56,8 +57,13 @@ import {
 
         saveAuthSession(auth);
         router.push(getDashboardPathByRole(auth.role));
-        } catch {
-        setServerError("Correo o contraseña incorrectos. Verifica tus datos.");
+        } catch (error) {
+        setServerError(
+            getApiErrorMessage(
+            error,
+            "Correo o contraseña incorrectos. Verifica tus datos."
+            )
+        );
         }
     }
 
