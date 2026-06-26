@@ -1,17 +1,29 @@
-export type UserRole = "ADMIN" | "INSTRUCTOR" | "STUDENT";
+export type UserRole =
+  | "ADMIN"
+  | "INSTRUCTOR"
+  | "STUDENT";
 
-export type UserStatus = "ACTIVE" | "INACTIVE" | "PENDING_VERIFICATION";
+export type UserStatus =
+  | "ACTIVE"
+  | "INACTIVE"
+  | "PENDING_VERIFICATION";
 
 export interface LoginRequest {
-    email: string;
-    password: string;
-    }
+  email: string;
+  password: string;
+}
 
-    export interface AuthResponse {
-    accessToken: string;
-    refreshToken: string;
-    userId: number;
-    email: string;
-    role: UserRole;
-    status: UserStatus;
+export interface AuthResponse {
+  accessToken: string;
+  userId: number;
+  email: string;
+  role: UserRole;
+  status: UserStatus;
+}
+
+export interface AuthUser {
+  userId: number;
+  email: string;
+  role: UserRole;
+  status: UserStatus;
 }

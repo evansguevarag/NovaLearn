@@ -201,7 +201,7 @@ import {
 
                 {courses.length === 0 && (
                 <TableRow>
-                    <TableCell colSpan={3} className="py-6 text-center text-muted-foreground">
+                    <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
                     No tienes cursos inscritos.
                     </TableCell>
                 </TableRow>
@@ -257,7 +257,7 @@ import {
 
                 {certificates.length === 0 && (
                 <TableRow>
-                    <TableCell colSpan={3} className="py-6 text-center text-muted-foreground">
+                    <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
                     No tienes certificados.
                     </TableCell>
                 </TableRow>

@@ -1,58 +1,114 @@
-import type { AuthResponse } from "@/features/auth/types/auth.types";
+import type {
+  AuthResponse,
+  AuthUser,
+} from "@/features/auth/types/auth.types";
 
-const ACCESS_TOKEN_KEY = "novalearn_access_token";
-const REFRESH_TOKEN_KEY = "novalearn_refresh_token";
-const USER_KEY = "novalearn_user";
+const ACCESS_TOKEN_KEY =
+  "novalearn_access_token";
 
-export const AUTH_STORAGE_EVENT = "novalearn-auth-storage";
-export function saveAuthSession(auth: AuthResponse): void {
-  if (typeof window === "undefined") return;
+const LEGACY_REFRESH_TOKEN_KEY =
+  "novalearn_refresh_token";
 
-  localStorage.setItem(ACCESS_TOKEN_KEY, auth.accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, auth.refreshToken);
+const USER_KEY =
+  "novalearn_user";
+
+export const AUTH_STORAGE_EVENT =
+  "novalearn-auth-storage";
+
+export function saveAuthSession(
+  auth: AuthResponse
+): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
   localStorage.setItem(
-    USER_KEY,
-    JSON.stringify({
-      userId: auth.userId,
-      email: auth.email,
-      role: auth.role,
-      status: auth.status,
-    })
+    ACCESS_TOKEN_KEY,
+    auth.accessToken
   );
 
-  window.dispatchEvent(new Event(AUTH_STORAGE_EVENT));
+  /*
+   * Se elimina cualquier refresh token antiguo.
+   * El refresh token actual vive únicamente en
+   * una cookie HttpOnly administrada por el backend.
+   */
+  localStorage.removeItem(
+    LEGACY_REFRESH_TOKEN_KEY
+  );
+
+  const user: AuthUser = {
+    userId: auth.userId,
+    email: auth.email,
+    role: auth.role,
+    status: auth.status,
+  };
+
+  localStorage.setItem(
+    USER_KEY,
+    JSON.stringify(user)
+  );
+
+  notifyAuthStorageChange();
 }
 
-export function getAccessToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
+export function getAccessToken():
+  | string
+  | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return localStorage.getItem(
+    ACCESS_TOKEN_KEY
+  );
 }
 
-export function getRefreshToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
-}
+export function getAuthUser():
+  | AuthUser
+  | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
 
-export function getAuthUser(): {
-  userId: number;
-  email: string;
-  role: "ADMIN" | "INSTRUCTOR" | "STUDENT";
-  status: string;
-} | null {
-  if (typeof window === "undefined") return null;
+  const storedUser =
+    localStorage.getItem(USER_KEY);
 
-  const user = localStorage.getItem(USER_KEY);
-  if (!user) return null;
+  if (!storedUser) {
+    return null;
+  }
 
-  return JSON.parse(user);
+  try {
+    return JSON.parse(
+      storedUser
+    ) as AuthUser;
+  } catch {
+    clearAuthSession();
+    return null;
+  }
 }
 
 export function clearAuthSession(): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") {
+    return;
+  }
 
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(
+    ACCESS_TOKEN_KEY
+  );
 
-  window.dispatchEvent(new Event(AUTH_STORAGE_EVENT));
+  localStorage.removeItem(
+    LEGACY_REFRESH_TOKEN_KEY
+  );
+
+  localStorage.removeItem(
+    USER_KEY
+  );
+
+  notifyAuthStorageChange();
+}
+
+function notifyAuthStorageChange(): void {
+  window.dispatchEvent(
+    new Event(AUTH_STORAGE_EVENT)
+  );
 }
