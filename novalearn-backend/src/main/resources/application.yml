@@ -24,8 +24,8 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: 5MB
-      max-request-size: 5MB  
+      max-file-size: 20MB
+      max-request-size: 20MB  
 
 app:
   security:
@@ -33,6 +33,12 @@ app:
       secret: ${JWT_SECRET}
       access-token-expiration-minutes: ${JWT_ACCESS_EXPIRATION_MINUTES}
       refresh-token-expiration-days: ${JWT_REFRESH_EXPIRATION_DAYS}
+
+    refresh-cookie:
+      name: novalearn_refresh_token
+      path: /api/v1/auth
+      same-site: ${REFRESH_COOKIE_SAME_SITE:Lax}
+      secure: ${REFRESH_COOKIE_SECURE:false}      
 
   admin:
     email: ${ADMIN_EMAIL}
@@ -49,3 +55,8 @@ app:
   resend:
     api-key: ${RESEND_API_KEY}
     from-email: ${RESEND_FROM_EMAIL}  
+
+  culqi:
+    api-base-url: ${CULQI_API_BASE_URL:https://api.culqi.com/v2}
+    public-key: ${CULQI_PUBLIC_KEY:}
+    secret-key: ${CULQI_SECRET_KEY:}

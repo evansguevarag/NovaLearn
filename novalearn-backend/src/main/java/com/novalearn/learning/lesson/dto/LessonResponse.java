@@ -1,6 +1,7 @@
 package com.novalearn.learning.lesson.dto;
 
 import com.novalearn.learning.lesson.entity.Lesson;
+import com.novalearn.media.entity.FileAsset;
 
 import java.time.LocalDateTime;
 
@@ -18,51 +19,142 @@ public class LessonResponse {
     private Integer sortOrder;
     private Boolean preview;
     private Boolean active;
+
+    private Long resourceFileId;
+    private String resourceUrl;
+    private String resourceFileName;
+    private String resourceMimeType;
+    private Long resourceFileSize;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public LessonResponse(Lesson lesson) {
+    public LessonResponse(
+            Lesson lesson
+    ) {
         this.id = lesson.getId();
-        this.moduleId = lesson.getModule().getId();
-        this.moduleTitle = lesson.getModule().getTitle();
+        this.moduleId =
+                lesson.getModule().getId();
+        this.moduleTitle =
+                lesson.getModule().getTitle();
         this.title = lesson.getTitle();
-        this.description = lesson.getDescription();
+        this.description =
+                lesson.getDescription();
         this.content = lesson.getContent();
-        this.videoUrl = lesson.getVideoUrl();
-        this.lessonType = lesson.getLessonType().name();
-        this.durationMinutes = lesson.getDurationMinutes();
-        this.sortOrder = lesson.getSortOrder();
-        this.preview = lesson.getPreview();
-        this.active = lesson.getActive();
-        this.createdAt = lesson.getCreatedAt();
-        this.updatedAt = lesson.getUpdatedAt();
+        this.videoUrl =
+                lesson.getVideoUrl();
+        this.lessonType =
+                lesson.getLessonType().name();
+        this.durationMinutes =
+                lesson.getDurationMinutes();
+        this.sortOrder =
+                lesson.getSortOrder();
+        this.preview =
+                lesson.getPreview();
+        this.active =
+                lesson.getActive();
+        this.createdAt =
+                lesson.getCreatedAt();
+        this.updatedAt =
+                lesson.getUpdatedAt();
+
+        mapResourceFile(
+                lesson.getResourceFile()
+        );
     }
 
-    public Long getId() { return id; }
+    private void mapResourceFile(
+            FileAsset resourceFile
+    ) {
+        if (resourceFile == null) {
+            return;
+        }
 
-    public Long getModuleId() { return moduleId; }
+        this.resourceFileId =
+                resourceFile.getId();
+        this.resourceUrl =
+                resourceFile.getUrl();
+        this.resourceFileName =
+                resourceFile.getFileName();
+        this.resourceMimeType =
+                resourceFile.getMimeType();
+        this.resourceFileSize =
+                resourceFile.getFileSize();
+    }
 
-    public String getModuleTitle() { return moduleTitle; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getTitle() { return title; }
+    public Long getModuleId() {
+        return moduleId;
+    }
 
-    public String getDescription() { return description; }
+    public String getModuleTitle() {
+        return moduleTitle;
+    }
 
-    public String getContent() { return content; }
+    public String getTitle() {
+        return title;
+    }
 
-    public String getVideoUrl() { return videoUrl; }
+    public String getDescription() {
+        return description;
+    }
 
-    public String getLessonType() { return lessonType; }
+    public String getContent() {
+        return content;
+    }
 
-    public Integer getDurationMinutes() { return durationMinutes; }
+    public String getVideoUrl() {
+        return videoUrl;
+    }
 
-    public Integer getSortOrder() { return sortOrder; }
+    public String getLessonType() {
+        return lessonType;
+    }
 
-    public Boolean getPreview() { return preview; }
+    public Integer getDurationMinutes() {
+        return durationMinutes;
+    }
 
-    public Boolean getActive() { return active; }
+    public Integer getSortOrder() {
+        return sortOrder;
+    }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
+    public Boolean getPreview() {
+        return preview;
+    }
 
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public Boolean getActive() {
+        return active;
+    }
+
+    public Long getResourceFileId() {
+        return resourceFileId;
+    }
+
+    public String getResourceUrl() {
+        return resourceUrl;
+    }
+
+    public String getResourceFileName() {
+        return resourceFileName;
+    }
+
+    public String getResourceMimeType() {
+        return resourceMimeType;
+    }
+
+    public Long getResourceFileSize() {
+        return resourceFileSize;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
 }

@@ -128,6 +128,13 @@ public class Enrollment {
         this.completedAt = LocalDateTime.now();
         this.progressPercentage = BigDecimal.valueOf(100);
     }
+    public void reactivate() {
+        this.active = true;
+        this.deletedAt = null;
+        this.completedAt = null;
+        this.progressPercentage = BigDecimal.ZERO;
+        this.enrolledAt = LocalDateTime.now();
+    }
 
     public void deactivate() {
         this.active = false;

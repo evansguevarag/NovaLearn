@@ -6,13 +6,20 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;
 
-public interface CourseCategoryRepository extends JpaRepository<CourseCategory, Long> {
+public interface CourseCategoryRepository
+        extends JpaRepository<CourseCategory, Long> {
 
     boolean existsByNameIgnoreCase(String name);
 
     boolean existsBySlug(String slug);
 
-    Optional<CourseCategory> findByIdAndDeletedAtIsNull(Long id);
+    Optional<CourseCategory> findByIdAndDeletedAtIsNull(
+            Long id
+    );
 
-    List<CourseCategory> findByDeletedAtIsNullOrderByNameAsc();
+    List<CourseCategory>
+    findByDeletedAtIsNullOrderByNameAsc();
+
+    List<CourseCategory>
+    findByActiveTrueAndDeletedAtIsNullOrderByNameAsc();
 }

@@ -2,6 +2,7 @@ package com.novalearn.payment.controller;
 
 import com.novalearn.core.user.entity.User;
 import com.novalearn.payment.dto.ConfirmPaymentRequest;
+import com.novalearn.payment.dto.CreateCulqiChargeRequest;
 import com.novalearn.payment.dto.CreatePaymentRequest;
 import com.novalearn.payment.dto.PaymentResponse;
 import com.novalearn.payment.dto.PaymentTransactionResponse;
@@ -47,6 +48,25 @@ public class PaymentController {
 
         return ResponseEntity.ok(
                 paymentService.confirmPayment(student, request, httpRequest)
+        );
+        }
+
+        @PostMapping("/student/payments/{paymentId}/culqi/charge")
+        public ResponseEntity<PaymentResponse> createCulqiCharge(
+                Authentication authentication,
+                @PathVariable Long paymentId,
+                @Valid @RequestBody CreateCulqiChargeRequest request,
+                HttpServletRequest httpRequest
+        ) {
+        User student = (User) authentication.getPrincipal();
+
+        return ResponseEntity.ok(
+                paymentService.createCulqiCharge(
+                        student,
+                        paymentId,
+                        request,
+                        httpRequest
+                )
         );
         }
 

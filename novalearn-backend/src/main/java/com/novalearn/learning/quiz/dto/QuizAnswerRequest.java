@@ -4,13 +4,17 @@ import jakarta.validation.constraints.NotNull;
 
 public class QuizAnswerRequest {
 
-    @NotNull(message = "La pregunta es obligatoria")
+    @NotNull(message = "El identificador de la pregunta es obligatorio")
     private Long questionId;
 
-    @NotNull(message = "La opcion seleccionada es obligatoria")
+    @NotNull(message = "Debe seleccionar una opcion de respuesta")
     private Long selectedOptionId;
 
-    public Long getQuestionId() { return questionId; }
+    public Long getQuestionId() {
+        return questionId;
+    }
 
-    public Long getSelectedOptionId() { return selectedOptionId; }
+    public Long getSelectedOptionId() {
+        return selectedOptionId;
+    }
 }

@@ -3,14 +3,19 @@ package com.novalearn.payment.service;
 import com.novalearn.core.user.entity.User;
 import com.novalearn.core.user.enums.UserRole;
 import com.novalearn.learning.course.entity.Course;
+import com.novalearn.learning.course.enums.CourseStatus;
+import com.novalearn.learning.course.enums.CourseType;
 import com.novalearn.learning.course.repository.CourseRepository;
 import com.novalearn.learning.enrollment.dto.EnrollmentRequest;
 import com.novalearn.learning.enrollment.repository.EnrollmentRepository;
 import com.novalearn.learning.enrollment.service.EnrollmentService;
 import com.novalearn.payment.dto.ConfirmPaymentRequest;
+import com.novalearn.payment.dto.CreateCulqiChargeRequest;
 import com.novalearn.payment.dto.CreatePaymentRequest;
 import com.novalearn.payment.dto.PaymentResponse;
 import com.novalearn.payment.dto.PaymentTransactionResponse;
+import com.novalearn.payment.culqi.CulqiChargeVerification;
+import com.novalearn.payment.culqi.CulqiClient;
 import com.novalearn.payment.entity.Payment;
 import com.novalearn.payment.entity.PaymentTransaction;
 import com.novalearn.payment.enums.PaymentProvider;
@@ -42,6 +47,7 @@ public class PaymentService {
     private final EmailTemplateService emailTemplateService;
     private final UserNotificationService userNotificationService;
     private final AuditLogService auditLogService;
+    private final CulqiClient culqiClient;
 
     public PaymentService(
             PaymentRepository paymentRepository,
@@ -52,7 +58,8 @@ public class PaymentService {
             EmailService emailService,
             EmailTemplateService emailTemplateService,
             UserNotificationService userNotificationService,
-            AuditLogService auditLogService
+            AuditLogService auditLogService,
+            CulqiClient culqiClient
     ) {
         this.paymentRepository = paymentRepository;
         this.transactionRepository = transactionRepository;
@@ -63,6 +70,7 @@ public class PaymentService {
         this.emailTemplateService = emailTemplateService;
         this.userNotificationService = userNotificationService;
         this.auditLogService = auditLogService;
+        this.culqiClient = culqiClient;
     }
 
     @Transactional
@@ -74,6 +82,14 @@ public class PaymentService {
 
         Course course = courseRepository.findByIdAndDeletedAtIsNull(request.getCourseId())
                 .orElseThrow(() -> new IllegalArgumentException("Curso no encontrado"));
+
+        if (course.getStatus() != CourseStatus.PUBLISHED) {
+            throw new IllegalArgumentException("El curso no esta disponible para compra");
+        }
+
+        if (course.getCourseType() != CourseType.PAID) {
+            throw new IllegalArgumentException("Solo los cursos de pago usan checkout");
+        }
 
         if (enrollmentRepository.existsByStudentIdAndCourseIdAndDeletedAtIsNull(
                 student.getId(),
@@ -123,22 +139,31 @@ public class PaymentService {
             return new PaymentResponse(payment);
         }
 
-        boolean success = Boolean.TRUE.equals(request.getSuccess());
+        CulqiChargeVerification verification =
+                culqiClient.verifyCharge(
+                        payment,
+                        request.getProviderPaymentId()
+                );
 
-        if (!success) {
-            payment.markAsFailed(request.getProviderPaymentId());
+        if (!verification.isPaid()) {
+            payment.markAsFailed(
+                    verification.getProviderPaymentId()
+            );
 
             registerTransaction(
                     payment,
                     TransactionType.FAILED_PAYMENT,
                     PaymentStatus.FAILED,
-                    "Pago rechazado por proveedor"
+                    "Pago no aprobado por Culqi. Estado: " +
+                            verification.getRawStatus()
             );
 
             return new PaymentResponse(payment);
         }
 
-        payment.markAsPaid(request.getProviderPaymentId());
+        payment.markAsPaid(
+                verification.getProviderPaymentId()
+        );
 
         auditLogService.register(
         payment.getStudent(),
@@ -174,6 +199,94 @@ public class PaymentService {
             NotificationType.PAYMENT
             );
 
+        }
+
+        return new PaymentResponse(payment);
+    }
+
+    @Transactional
+    public PaymentResponse createCulqiCharge(
+            User student,
+            Long paymentId,
+            CreateCulqiChargeRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        Payment payment = paymentRepository.findByIdAndStudentId(
+                        paymentId,
+                        student.getId()
+                )
+                .orElseThrow(() -> new IllegalArgumentException("Pago no encontrado"));
+
+        if (payment.getStatus() == PaymentStatus.PAID) {
+            return new PaymentResponse(payment);
+        }
+
+        if (payment.getStatus() != PaymentStatus.PENDING) {
+            throw new IllegalArgumentException(
+                    "Solo se pueden procesar pagos pendientes"
+            );
+        }
+
+        CulqiChargeVerification verification =
+                culqiClient.createCharge(
+                        payment,
+                        request.getSourceId(),
+                        student.getEmail()
+                );
+
+        if (!verification.isPaid()) {
+            payment.markAsFailed(
+                    verification.getProviderPaymentId()
+            );
+
+            registerTransaction(
+                    payment,
+                    TransactionType.FAILED_PAYMENT,
+                    PaymentStatus.FAILED,
+                    "Cargo no aprobado por Culqi. Estado: " +
+                            verification.getRawStatus()
+            );
+
+            return new PaymentResponse(payment);
+        }
+
+        payment.markAsPaid(
+                verification.getProviderPaymentId()
+        );
+
+        auditLogService.register(
+                payment.getStudent(),
+                AuditAction.PAYMENT_CONFIRMED,
+                "Payment",
+                String.valueOf(payment.getId()),
+                "Pago confirmado para el curso " + payment.getCourse().getTitle(),
+                httpRequest
+        );
+
+        registerTransaction(
+                payment,
+                TransactionType.CONFIRM_PAYMENT,
+                PaymentStatus.PAID,
+                "Cargo creado y confirmado por Culqi"
+        );
+
+        if (!enrollmentRepository.existsByStudentIdAndCourseIdAndDeletedAtIsNull(
+                payment.getStudent().getId(),
+                payment.getCourse().getId()
+        )) {
+            EnrollmentRequest enrollmentRequest = new EnrollmentRequest(
+                    payment.getStudent().getId(),
+                    payment.getCourse().getId()
+            );
+
+            enrollmentService.create(enrollmentRequest);
+
+            userNotificationService.createSystemNotification(
+                    payment.getStudent(),
+                    "Pago confirmado",
+                    "Tu compra del curso " + payment.getCourse().getTitle() + " fue confirmada correctamente.",
+                    NotificationType.PAYMENT
+            );
         }
 
         return new PaymentResponse(payment);

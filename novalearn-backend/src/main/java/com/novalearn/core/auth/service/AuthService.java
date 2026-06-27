@@ -1,43 +1,44 @@
 package com.novalearn.core.auth.service;
 
 import com.novalearn.core.auth.dto.AuthResponse;
+import com.novalearn.core.auth.dto.AuthSessionResult;
 import com.novalearn.core.auth.dto.LoginRequest;
 import com.novalearn.core.auth.dto.RegisterRequest;
 import com.novalearn.core.auth.jwt.JwtService;
+import com.novalearn.core.token.entity.RefreshToken;
+import com.novalearn.core.token.service.RefreshTokenService;
 import com.novalearn.core.user.entity.User;
 import com.novalearn.core.user.enums.UserRole;
 import com.novalearn.core.user.enums.UserStatus;
 import com.novalearn.core.user.repository.UserRepository;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import com.novalearn.core.token.entity.RefreshToken;
-import com.novalearn.core.token.service.RefreshTokenService;
-import com.novalearn.core.auth.dto.RefreshTokenRequest;
 import com.novalearn.notification.email.service.EmailService;
 import com.novalearn.notification.email.service.EmailTemplateService;
 import com.novalearn.notification.internal.enums.NotificationType;
 import com.novalearn.notification.internal.service.UserNotificationService;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
-        private final RefreshTokenService refreshTokenService;    
-        private final UserRepository userRepository;
-        private final PasswordEncoder passwordEncoder;
-        private final JwtService jwtService;
-        private final EmailService emailService;
-        private final EmailTemplateService emailTemplateService;
-        private final UserNotificationService userNotificationService;
 
-        public AuthService(
-                UserRepository userRepository,
-                PasswordEncoder passwordEncoder,
-                JwtService jwtService,
-                RefreshTokenService refreshTokenService,
-                EmailService emailService,
-                EmailTemplateService emailTemplateService,
-                UserNotificationService userNotificationService
-        ) {
+    private final RefreshTokenService refreshTokenService;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
+    private final EmailService emailService;
+    private final EmailTemplateService emailTemplateService;
+    private final UserNotificationService userNotificationService;
+
+    public AuthService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService,
+            RefreshTokenService refreshTokenService,
+            EmailService emailService,
+            EmailTemplateService emailTemplateService,
+            UserNotificationService userNotificationService
+    ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -45,67 +46,78 @@ public class AuthService {
         this.emailService = emailService;
         this.emailTemplateService = emailTemplateService;
         this.userNotificationService = userNotificationService;
-        }
+    }
 
-        @Transactional
-        public AuthResponse register(RegisterRequest request) {
+    @Transactional
+    public AuthSessionResult register(
+            RegisterRequest request
+    ) {
+        String email =
+                request.getEmail().trim().toLowerCase();
 
-                String email = request.getEmail().trim().toLowerCase();
-
-                if (userRepository.existsByEmail(email)) {
-                throw new IllegalArgumentException("El correo ya está registrado");
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException(
+                    "El correo ya está registrado"
+            );
         }
 
         User user = new User();
         user.setFirstName(request.getFirstName().trim());
         user.setLastName(request.getLastName().trim());
         user.setEmail(email);
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setPassword(
+                passwordEncoder.encode(
+                        request.getPassword()
+                )
+        );
         user.setRole(UserRole.STUDENT);
-        user.setStatus(UserStatus.PENDING_VERIFICATION);
+        user.setStatus(
+                UserStatus.PENDING_VERIFICATION
+        );
         user.setEmailVerified(false);
 
-        User savedUser = userRepository.save(user);
+        User savedUser =
+                userRepository.save(user);
 
-        userNotificationService.createSystemNotification(
-        savedUser,
-        "Bienvenido a NovaLearn",
-        "Tu cuenta fue creada correctamente. Ya puedes explorar cursos.",
-        NotificationType.SYSTEM
-        );
+        userNotificationService
+                .createSystemNotification(
+                        savedUser,
+                        "Bienvenido a NovaLearn",
+                        "Tu cuenta fue creada correctamente. Ya puedes explorar cursos.",
+                        NotificationType.SYSTEM
+                );
 
-        String accessToken = jwtService.generateAccessToken(savedUser.getEmail());
-
-        RefreshToken refreshToken = refreshTokenService.createRefreshToken(savedUser);
+        AuthSessionResult session =
+                createSession(savedUser);
 
         try {
-        emailService.sendEmail(
-                savedUser.getEmail(),
-                emailTemplateService.welcomeSubject(),
-                emailTemplateService.welcomeHtml(savedUser)
-        );
+            emailService.sendEmail(
+                    savedUser.getEmail(),
+                    emailTemplateService
+                            .welcomeSubject(),
+                    emailTemplateService
+                            .welcomeHtml(savedUser)
+            );
         } catch (Exception ignored) {
+            // El registro no debe fallar si el correo no puede enviarse.
         }
 
-        return new AuthResponse(
-        accessToken,
-        refreshToken.getToken(),
-        savedUser.getId(),
-        savedUser.getEmail(),
-        savedUser.getRole().name(),
-        savedUser.getStatus().name()
-        );
-        
-        }
+        return session;
+    }
 
-        @Transactional
-        public AuthResponse login(LoginRequest request) {
+    @Transactional
+    public AuthSessionResult login(
+            LoginRequest request
+    ) {
+        String email =
+                request.getEmail().trim().toLowerCase();
 
-        String email = request.getEmail().trim().toLowerCase();
-
-        User user = userRepository.findByEmail(email)
+        User user = userRepository
+                .findByEmail(email)
                 .orElseThrow(() ->
-                        new IllegalArgumentException("Credenciales inválidas")
+                        new IllegalArgumentException(
+                                "Credenciales inválidas"
+                        )
                 );
 
         boolean validPassword =
@@ -115,54 +127,66 @@ public class AuthService {
                 );
 
         if (!validPassword) {
-                throw new IllegalArgumentException("Credenciales inválidas");
+            throw new IllegalArgumentException(
+                    "Credenciales inválidas"
+            );
         }
 
-        String accessToken = jwtService.generateAccessToken(user.getEmail());
+        return createSession(user);
+    }
 
-                RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
-
-        return new AuthResponse(
-                accessToken,
-                refreshToken.getToken(),
-                user.getId(),
-                user.getEmail(),
-                user.getRole().name(),
-                user.getStatus().name()
-        );
-        }
-
-        @Transactional
-        public AuthResponse refreshToken(RefreshTokenRequest request) {
-
+    @Transactional
+    public AuthSessionResult refreshToken(
+            String refreshTokenValue
+    ) {
         RefreshToken currentRefreshToken =
-                refreshTokenService.validateRefreshToken(
-                        request.getRefreshToken()
-                );
+                refreshTokenService
+                        .validateRefreshToken(
+                                refreshTokenValue
+                        );
 
-        User user = currentRefreshToken.getUser();
+        User user =
+                currentRefreshToken.getUser();
 
         currentRefreshToken.revoke();
 
-        String accessToken = jwtService.generateAccessToken(user.getEmail());
+        return createSession(user);
+    }
 
-        RefreshToken newRefreshToken =
-                refreshTokenService.createRefreshToken(user);
+    @Transactional
+    public void logout(
+            String refreshTokenValue
+    ) {
+        refreshTokenService
+                .revokeRefreshTokenIfPresent(
+                        refreshTokenValue
+                );
+    }
 
-        return new AuthResponse(
-                accessToken,
-                newRefreshToken.getToken(),
-                user.getId(),
-                user.getEmail(),
-                user.getRole().name(),
-                user.getStatus().name()
+    private AuthSessionResult createSession(
+            User user
+    ) {
+        String accessToken =
+                jwtService.generateAccessToken(
+                        user.getEmail()
+                );
+
+        RefreshToken refreshToken =
+                refreshTokenService
+                        .createRefreshToken(user);
+
+        AuthResponse response =
+                new AuthResponse(
+                        accessToken,
+                        user.getId(),
+                        user.getEmail(),
+                        user.getRole().name(),
+                        user.getStatus().name()
+                );
+
+        return new AuthSessionResult(
+                response,
+                refreshToken.getToken()
         );
-        }
-
-        @Transactional
-        public void logout(RefreshTokenRequest request) {
-        refreshTokenService.revokeRefreshToken(
-                request.getRefreshToken()
-        );
-        }
+    }
 }

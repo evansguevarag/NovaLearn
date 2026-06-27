@@ -20,61 +20,96 @@ public class RefreshTokenService {
             RefreshTokenRepository refreshTokenRepository,
             JwtProperties jwtProperties
     ) {
-        this.refreshTokenRepository = refreshTokenRepository;
-        this.jwtProperties = jwtProperties;
+        this.refreshTokenRepository =
+                refreshTokenRepository;
+
+        this.jwtProperties =
+                jwtProperties;
     }
 
     @Transactional
-    public RefreshToken createRefreshToken(User user) {
-
-        refreshTokenRepository.findByUserAndRevokedFalse(user)
+    public RefreshToken createRefreshToken(
+            User user
+    ) {
+        refreshTokenRepository
+                .findByUserAndRevokedFalse(user)
                 .forEach(token -> {
                     token.revoke();
                     refreshTokenRepository.save(token);
                 });
 
-        RefreshToken refreshToken = new RefreshToken();
+        RefreshToken refreshToken =
+                new RefreshToken();
+
         refreshToken.setUser(user);
-        refreshToken.setToken(UUID.randomUUID().toString());
+        refreshToken.setToken(
+                UUID.randomUUID().toString()
+        );
         refreshToken.setExpiresAt(
                 LocalDateTime.now().plusDays(
-                        jwtProperties.getRefreshTokenExpirationDays()
+                        jwtProperties
+                                .getRefreshTokenExpirationDays()
                 )
         );
         refreshToken.setRevoked(false);
 
-        return refreshTokenRepository.save(refreshToken);
+        return refreshTokenRepository
+                .save(refreshToken);
     }
 
     @Transactional(readOnly = true)
-    public RefreshToken validateRefreshToken(String token) {
+    public RefreshToken validateRefreshToken(
+            String token
+    ) {
+        RefreshToken refreshToken =
+                refreshTokenRepository
+                        .findByToken(token)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Refresh token inválido"
+                                )
+                        );
 
-        RefreshToken refreshToken = refreshTokenRepository.findByToken(token)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Refresh token inválido")
-                );
-
-        if (Boolean.TRUE.equals(refreshToken.getRevoked())) {
-            throw new IllegalArgumentException("Refresh token revocado");
+        if (
+                Boolean.TRUE.equals(
+                        refreshToken.getRevoked()
+                )
+        ) {
+            throw new IllegalArgumentException(
+                    "Refresh token revocado"
+            );
         }
 
-        if (refreshToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new IllegalArgumentException("Refresh token expirado");
+        if (
+                refreshToken
+                        .getExpiresAt()
+                        .isBefore(LocalDateTime.now())
+        ) {
+            throw new IllegalArgumentException(
+                    "Refresh token expirado"
+            );
         }
 
         return refreshToken;
     }
 
     @Transactional
-    public void revokeRefreshToken(String token) {
+    public void revokeRefreshTokenIfPresent(
+            String token
+    ) {
+        if (
+                token == null ||
+                token.isBlank()
+        ) {
+            return;
+        }
 
-        RefreshToken refreshToken = refreshTokenRepository.findByToken(token)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Refresh token inválido")
-                );
-
-        refreshToken.revoke();
-
-        refreshTokenRepository.save(refreshToken);
+        refreshTokenRepository
+                .findByToken(token)
+                .ifPresent(refreshToken -> {
+                    refreshToken.revoke();
+                    refreshTokenRepository
+                            .save(refreshToken);
+                });
     }
 }

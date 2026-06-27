@@ -128,3 +128,6 @@ java -version
 mvn -version
 psql --version
 git --version
+
+REFRESH_COOKIE_SECURE=true
+REFRESH_COOKIE_SAME_SITE=None

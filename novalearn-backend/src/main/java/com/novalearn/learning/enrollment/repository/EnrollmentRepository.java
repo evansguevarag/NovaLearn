@@ -7,36 +7,69 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 import java.util.Optional;
 
-public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
+public interface EnrollmentRepository
+        extends JpaRepository<Enrollment, Long> {
 
-    boolean existsByStudentIdAndCourseIdAndDeletedAtIsNull(Long studentId, Long courseId);
+    boolean existsByStudentIdAndCourseIdAndDeletedAtIsNull(
+            Long studentId,
+            Long courseId
+    );
 
-    Optional<Enrollment> findByIdAndDeletedAtIsNull(Long id);
+    Optional<Enrollment> findByStudentIdAndCourseId(
+            Long studentId,
+            Long courseId
+    );
 
-    List<Enrollment> findByStudentIdAndDeletedAtIsNullOrderByEnrolledAtDesc(Long studentId);
+    Optional<Enrollment>
+    findByStudentIdAndCourseIdAndActiveTrueAndDeletedAtIsNull(
+            Long studentId,
+            Long courseId
+    );
 
-    List<Enrollment> findByCourseIdAndDeletedAtIsNullOrderByEnrolledAtDesc(Long courseId);
+    Optional<Enrollment> findByIdAndDeletedAtIsNull(
+            Long id
+    );
 
-    List<Enrollment> findTop10ByDeletedAtIsNullOrderByEnrolledAtDesc();
+    List<Enrollment>
+    findByStudentIdAndDeletedAtIsNullOrderByEnrolledAtDesc(
+            Long studentId
+    );
+
+    List<Enrollment>
+    findByCourseIdAndDeletedAtIsNullOrderByEnrolledAtDesc(
+            Long courseId
+    );
+
+    List<Enrollment>
+    findTop10ByDeletedAtIsNullOrderByEnrolledAtDesc();
 
     long countByDeletedAtIsNull();
 
     long countByCompletedAtIsNotNullAndDeletedAtIsNull();
 
-    List<Enrollment> findByCourseInstructorIdAndDeletedAtIsNullOrderByEnrolledAtDesc(Long instructorId);
+    List<Enrollment>
+    findByCourseInstructorIdAndDeletedAtIsNullOrderByEnrolledAtDesc(
+            Long instructorId
+    );
 
-    long countByCourseInstructorIdAndDeletedAtIsNull(Long instructorId);
+    long countByCourseInstructorIdAndDeletedAtIsNull(
+            Long instructorId
+    );
 
-    long countByCourseInstructorIdAndCompletedAtIsNotNullAndDeletedAtIsNull(Long instructorId);
+    long
+    countByCourseInstructorIdAndCompletedAtIsNotNullAndDeletedAtIsNull(
+            Long instructorId
+    );
 
     @Query(
             value = """
-                    SELECT 
+                    SELECT
                         c.id,
                         c.title,
                         COUNT(e.id) AS total_enrollments
                     FROM enrollments e
-                    INNER JOIN courses c ON c.id = e.course_id
+                    INNER JOIN courses c
+                        ON c.id = e.course_id
                     WHERE e.deleted_at IS NULL
                     GROUP BY c.id, c.title
                     ORDER BY total_enrollments DESC

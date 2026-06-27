@@ -11,8 +11,6 @@ public class ConfirmPaymentRequest {
     @NotBlank(message = "El codigo del proveedor es obligatorio")
     private String providerPaymentId;
 
-    private Boolean success;
-
     public Long getPaymentId() {
         return paymentId;
     }
@@ -21,7 +19,4 @@ public class ConfirmPaymentRequest {
         return providerPaymentId;
     }
 
-    public Boolean getSuccess() {
-        return success;
-    }
 }
