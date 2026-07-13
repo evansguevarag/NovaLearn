@@ -2,6 +2,7 @@ package com.novalearn.learning.evaluation.controller;
 
 import com.novalearn.core.user.entity.User;
 import com.novalearn.learning.evaluation.dto.EvaluationResponse;
+import com.novalearn.learning.evaluation.dto.StudentEvaluationOverviewResponse;
 import com.novalearn.learning.evaluation.service.EvaluationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -19,6 +20,17 @@ public class EvaluationStudentController {
             EvaluationService evaluationService
     ) {
         this.evaluationService = evaluationService;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<StudentEvaluationOverviewResponse>> findAll(
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                evaluationService.findPublishedForStudent(
+                        user(authentication)
+                )
+        );
     }
 
     @GetMapping("/course/{courseId}")

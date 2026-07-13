@@ -101,6 +101,9 @@ public class StudentDashboardService {
         return paymentRepository
                 .findByStudentIdOrderByCreatedAtDesc(student.getId())
                 .stream()
+                .filter(payment ->
+                        payment.getStatus() != PaymentStatus.CANCELLED
+                )
                 .map(StudentPaymentDashboardResponse::new)
                 .toList();
     }

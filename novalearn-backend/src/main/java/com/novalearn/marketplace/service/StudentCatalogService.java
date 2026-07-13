@@ -1,6 +1,9 @@
 package com.novalearn.marketplace.service;
 
 import com.novalearn.common.exception.ResourceNotFoundException;
+import com.novalearn.config.culqi.CulqiProperties;
+import com.novalearn.core.setting.entity.SystemSetting;
+import com.novalearn.core.setting.repository.SystemSettingRepository;
 import com.novalearn.core.user.entity.User;
 import com.novalearn.core.user.enums.UserRole;
 import com.novalearn.learning.category.dto.CourseCategoryResponse;
@@ -15,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 @Service
@@ -23,15 +27,23 @@ public class StudentCatalogService {
     private final CourseRepository courseRepository;
     private final CourseCategoryRepository categoryRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final SystemSettingRepository systemSettingRepository;
+    private final CulqiProperties culqiProperties;
+    private static final BigDecimal DEFAULT_PROCESSING_FEE_PERCENTAGE =
+            BigDecimal.valueOf(4.02);
 
     public StudentCatalogService(
             CourseRepository courseRepository,
             CourseCategoryRepository categoryRepository,
-            EnrollmentRepository enrollmentRepository
+            EnrollmentRepository enrollmentRepository,
+            SystemSettingRepository systemSettingRepository,
+            CulqiProperties culqiProperties
     ) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.systemSettingRepository = systemSettingRepository;
+        this.culqiProperties = culqiProperties;
     }
 
     @Transactional(readOnly = true)
@@ -107,8 +119,77 @@ public class StudentCatalogService {
 
         return new StudentCatalogCourseResponse(
                 course,
-                enrolled
+                enrolled,
+                calculatePublicPrice(course)
         );
+    }
+
+    private BigDecimal calculatePublicPrice(Course course) {
+        BigDecimal basePrice = normalizeMoney(course.getPrice());
+
+        if (course.getCourseType() == CourseType.FREE) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+
+        PaymentSettings settings = getEffectivePaymentSettings();
+
+        if (!settings.passProcessingFeeToStudent()) {
+            return basePrice;
+        }
+
+        BigDecimal processingFee = normalizeMoney(
+                basePrice.multiply(settings.processingFeePercentage())
+                        .divide(
+                                BigDecimal.valueOf(100),
+                                6,
+                                RoundingMode.HALF_UP
+                        )
+        );
+
+        return normalizeMoney(basePrice.add(processingFee));
+    }
+
+    private PaymentSettings getEffectivePaymentSettings() {
+        return systemSettingRepository
+                .findFirstByOrderByIdAsc()
+                .map(this::toPaymentSettings)
+                .orElseGet(() -> new PaymentSettings(
+                        resolveDefaultProcessingFeePercentage(),
+                        culqiProperties.isPassProcessingFeeToStudent()
+                ));
+    }
+
+    private PaymentSettings toPaymentSettings(SystemSetting setting) {
+        return new PaymentSettings(
+                normalizeMoney(
+                        setting.getPaymentProcessingFeePercentage()
+                ),
+                setting.isPassProcessingFeeToStudent()
+        );
+    }
+
+    private BigDecimal resolveDefaultProcessingFeePercentage() {
+        BigDecimal configuredPercentage =
+                normalizeMoney(
+                        culqiProperties.getProcessingFeePercentage()
+                );
+
+        if (configuredPercentage.compareTo(BigDecimal.ZERO) > 0) {
+            return configuredPercentage;
+        }
+
+        return DEFAULT_PROCESSING_FEE_PERCENTAGE.setScale(
+                2,
+                RoundingMode.HALF_UP
+        );
+    }
+
+    private BigDecimal normalizeMoney(BigDecimal value) {
+        if (value == null) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+
+        return value.setScale(2, RoundingMode.HALF_UP);
     }
 
     private void validateStudent(User student) {
@@ -165,5 +246,11 @@ public class StudentCatalogService {
         return normalized.isEmpty()
                 ? null
                 : normalized;
+    }
+
+    private record PaymentSettings(
+            BigDecimal processingFeePercentage,
+            boolean passProcessingFeeToStudent
+    ) {
     }
 }

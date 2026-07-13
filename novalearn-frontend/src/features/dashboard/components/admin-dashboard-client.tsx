@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import {
     BookOpen,
+    ArrowRight,
     GraduationCap,
     Loader2,
     Medal,
     Users,
     Wallet,
     } from "lucide-react";
+import Link from "next/link";
 
     import { DashboardShell } from "@/components/layout/dashboard-shell";
     import {
@@ -17,6 +19,7 @@ import {
     AlertTitle,
     } from "@/components/ui/alert";
     import { Badge } from "@/components/ui/badge";
+    import { Button } from "@/components/ui/button";
     import {
     Card,
     CardContent,
@@ -37,7 +40,7 @@ import {
     getAdminDashboardSummary,
     getLatestEnrollments,
     getLatestStudents,
-    getRevenueByMonth,
+    getRevenue,
     getTopCourses,
     } from "@/features/dashboard/services/admin-dashboard.service";
 
@@ -45,7 +48,7 @@ import {
     AdminDashboardSummary,
     LatestEnrollment,
     LatestStudent,
-    RevenueByMonth,
+    RevenuePayment,
     TopCourse,
     } from "@/features/dashboard/types/admin-dashboard.types";
 
@@ -58,7 +61,7 @@ import {
     const [enrollments, setEnrollments] =
         useState<LatestEnrollment[]>([]);
     const [topCourses, setTopCourses] = useState<TopCourse[]>([]);
-    const [revenue, setRevenue] = useState<RevenueByMonth[]>([]);
+    const [revenue, setRevenue] = useState<RevenuePayment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -81,7 +84,7 @@ import {
             getLatestStudents(),
             getLatestEnrollments(),
             getTopCourses(),
-            getRevenueByMonth(),
+            getRevenue(),
             ]);
 
             setSummary(summaryData);
@@ -234,7 +237,7 @@ import {
                 Correo
                 </TableHead>
 
-                <TableHead className="w-[25%] whitespace-normal">
+                <TableHead className="w-[25%] whitespace-normal text-center">
                 Estado
                 </TableHead>
             </TableRow>
@@ -244,7 +247,7 @@ import {
             {students.map((student) => (
                 <TableRow key={student.id}>
                 <TableCell className="whitespace-normal align-top">
-                    <p className="wrap-break-word font-medium">
+                    <p className="break-words font-medium">
                     {student.firstName} {student.lastName}
                     </p>
                 </TableCell>
@@ -258,7 +261,7 @@ import {
                     </p>
                 </TableCell>
 
-                <TableCell className="whitespace-normal align-top">
+                <TableCell className="whitespace-normal text-center align-top">
                     <StatusBadge status={student.status} />
                 </TableCell>
                 </TableRow>
@@ -309,15 +312,15 @@ import {
                 <TableRow key={enrollment.id}>
                 <TableCell className="whitespace-normal align-top">
                     <p
-                    className="break-all text-sm"
-                    title={enrollment.studentEmail}
+                    className="break-words text-sm"
+                    title={enrollment.studentEmail ?? undefined}
                     >
-                    {enrollment.studentEmail}
+                    {getEnrollmentStudentName(enrollment)}
                     </p>
                 </TableCell>
 
                 <TableCell className="whitespace-normal align-top">
-                    <p className="wrap-break-wordword leading-5">
+                    <p className="break-words leading-5">
                     {enrollment.courseTitle}
                     </p>
                 </TableCell>
@@ -368,7 +371,7 @@ import {
             {courses.map((course) => (
                 <TableRow key={course.courseId}>
                 <TableCell className="whitespace-normal">
-                    <p className="wrap-break-word">
+                    <p className="break-words">
                     {course.courseTitle}
                     </p>
                 </TableCell>
@@ -398,43 +401,87 @@ import {
     function RevenueTable({
     revenue,
     }: {
-    revenue: RevenueByMonth[];
+    revenue: RevenuePayment[];
     }) {
+    const individualRevenue = revenue.filter(isIndividualRevenue);
+    const totalRevenue = individualRevenue.reduce(
+        (total, item) => total + getRevenueAmount(item),
+        0
+    );
+
     return (
-        <DashboardTableCard title="Ingresos mensuales">
+        <DashboardTableCard
+        title="Ingresos"
+        action={
+            <Button
+            asChild
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            >
+            <Link href="/admin/revenue">
+                Ver ingresos
+                <ArrowRight className="h-4 w-4" />
+            </Link>
+            </Button>
+        }
+        >
+        <div className="mb-4 rounded-lg border bg-muted/20 p-4">
+            <p className="text-sm text-muted-foreground">
+            Total confirmado
+            </p>
+            <p className="mt-1 text-2xl font-bold">
+            {formatCurrency(totalRevenue)}
+            </p>
+        </div>
+
         <Table className="table-fixed">
             <TableHeader>
             <TableRow>
-                <TableHead className="w-1/2 whitespace-normal">
-                Mes
+                <TableHead className="w-[28%] whitespace-normal">
+                Fecha
                 </TableHead>
 
-                <TableHead className="w-1/2 whitespace-normal text-right">
-                Ingreso
+                <TableHead className="w-[46%] whitespace-normal">
+                Curso vendido
+                </TableHead>
+
+                <TableHead className="w-[26%] whitespace-normal text-right">
+                Importe
                 </TableHead>
             </TableRow>
             </TableHeader>
 
             <TableBody>
-            {revenue.map((item) => (
-                <TableRow key={item.month}>
-                <TableCell className="whitespace-normal">
-                    {item.month}
+            {individualRevenue.slice(0, 8).map((item, index) => (
+                <TableRow key={buildRevenueRowKey(item, index)}>
+                <TableCell className="whitespace-normal align-top">
+                    {formatRevenueDate(item)}
                 </TableCell>
 
-                <TableCell className="text-right font-medium">
-                    {formatCurrency(item.revenue)}
+                <TableCell className="whitespace-normal align-top">
+                    <p className="break-words font-medium leading-5">
+                    {getRevenueCourseTitle(item)}
+                    </p>
+                    <p className="mt-1 break-all text-xs text-muted-foreground">
+                    {getRevenueStudentName(item)}
+                    </p>
+                </TableCell>
+
+                <TableCell className="text-right align-top font-medium">
+                    {formatCurrency(getRevenueAmount(item))}
                 </TableCell>
                 </TableRow>
             ))}
 
-            {revenue.length === 0 && (
+            {individualRevenue.length === 0 && (
                 <TableRow>
                 <TableCell
-                    colSpan={2}
+                    colSpan={3}
                     className="py-8 text-center text-muted-foreground"
                 >
-                    No hay ingresos registrados.
+                    No hay ventas individuales registradas.
                 </TableCell>
                 </TableRow>
             )}
@@ -446,20 +493,27 @@ import {
 
     interface DashboardTableCardProps {
     title: string;
+    action?: React.ReactNode;
     children: React.ReactNode;
     }
 
     function DashboardTableCard({
     title,
+    action,
     children,
     }: DashboardTableCardProps) {
     return (
-        <Card className="min-w-0 overflow-hidden">
-        <CardHeader>
+        <Card className="flex h-[31rem] min-w-0 flex-col overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
             <CardTitle className="text-lg">{title}</CardTitle>
+            {action}
         </CardHeader>
 
-        <CardContent className="min-w-0">{children}</CardContent>
+        <CardContent className="min-h-0 min-w-0 flex-1 overflow-hidden">
+            <div className="h-full min-w-0 overflow-auto pr-1">
+            {children}
+            </div>
+        </CardContent>
         </Card>
     );
     }
@@ -470,12 +524,14 @@ import {
         INACTIVE: "Inactivo",
         PENDING_VERIFICATION: "Pendiente",
         SUSPENDED: "Suspendido",
+        BLOCKED: "Bloqueado",
+        DELETED: "Inactivo",
     };
 
     return (
         <Badge
         variant={status === "ACTIVE" ? "default" : "secondary"}
-        className="max-w-full whitespace-normal text-center"
+        className="max-w-full whitespace-normal break-words px-2 py-1 text-center leading-tight"
         >
         {labels[status] ?? status}
         </Badge>
@@ -483,8 +539,125 @@ import {
     }
 
     function formatCurrency(value: number): string {
+    if (!Number.isFinite(value)) {
+        return formatCurrency(0);
+    }
+
     return new Intl.NumberFormat("es-PE", {
         style: "currency",
         currency: "PEN",
     }).format(value);
+}
+
+    function formatFullDate(value: string | number[] | null): string {
+    const date = parseDashboardDate(value);
+
+    if (!date) {
+        return "Fecha no disponible";
+    }
+
+    return new Intl.DateTimeFormat("es-PE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+    }).format(date);
+}
+
+    function parseDashboardDate(value: string | number[] | null): Date | null {
+    if (!value) {
+        return null;
+    }
+
+    if (Array.isArray(value)) {
+        const [
+        year,
+        month,
+        day,
+        hour = 0,
+        minute = 0,
+        second = 0,
+        ] = value;
+
+        if (!year || !month || !day) {
+        return null;
+        }
+
+        return new Date(
+        year,
+        month - 1,
+        day,
+        hour,
+        minute,
+        second
+        );
+    }
+
+    const parsedDate = new Date(value);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+        return null;
+    }
+
+    return parsedDate;
+}
+
+    function getEnrollmentStudentName(enrollment: LatestEnrollment): string {
+    const studentName = enrollment.studentName?.trim();
+
+    if (studentName) {
+        return studentName;
+    }
+
+    return enrollment.studentEmail?.trim() || "Estudiante sin nombre";
+}
+
+    function getRevenueAmount(item: RevenuePayment): number {
+    const amount = item.totalAmount ?? item.amount ?? 0;
+
+    return Number.isFinite(amount) ? amount : 0;
+}
+
+    function getRevenueCourseTitle(item: RevenuePayment): string {
+    return item.courseTitle?.trim() || "Curso no disponible";
+}
+
+    function getRevenueStudentName(item: RevenuePayment): string {
+    return (
+        item.studentName?.trim() ||
+        item.studentEmail?.trim() ||
+        "Estudiante no disponible"
+    );
+}
+
+    function formatRevenueDate(item: RevenuePayment): string {
+    if (item.paidAt) {
+        return formatFullDate(item.paidAt);
+    }
+
+    return "Fecha no disponible";
+}
+
+    function buildRevenueRowKey(
+    item: RevenuePayment,
+    index: number
+    ): string {
+    if (item.paymentId) {
+        return `payment-${item.paymentId}`;
+    }
+
+    return [
+        "revenue",
+        item.courseId ?? "course",
+        item.studentId ?? "student",
+        item.paidAt ?? "date",
+        item.amount ?? "amount",
+        index,
+    ].join("-");
+}
+
+    function isIndividualRevenue(item: RevenuePayment): boolean {
+    return Boolean(
+        item.courseTitle &&
+        (item.totalAmount != null || item.amount != null)
+    );
 }

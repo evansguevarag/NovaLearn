@@ -26,7 +26,8 @@ public class StudentCatalogCourseResponse {
 
     public StudentCatalogCourseResponse(
             Course course,
-            boolean enrolled
+            boolean enrolled,
+            BigDecimal publicPrice
     ) {
         this.id = course.getId();
         this.title = course.getTitle();
@@ -36,7 +37,7 @@ public class StudentCatalogCourseResponse {
         this.requirements = course.getRequirements();
         this.targetAudience = course.getTargetAudience();
         this.thumbnailUrl = course.getThumbnailUrl();
-        this.price = course.getPrice();
+        this.price = publicPrice;
         this.courseType = course.getCourseType().name();
         this.level = course.getLevel();
         this.certificateEnabled = course.getCertificateEnabled();

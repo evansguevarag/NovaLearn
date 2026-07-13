@@ -21,7 +21,8 @@ export interface AdminDashboardSummary {
     export interface LatestEnrollment {
     id: number;
     studentId: number;
-    studentEmail: string;
+    studentName?: string | null;
+    studentEmail?: string | null;
     courseId: number;
     courseTitle: string;
     progressPercentage: number;
@@ -34,7 +35,20 @@ export interface AdminDashboardSummary {
     totalEnrollments: number;
     }
 
-    export interface RevenueByMonth {
-    month: string;
-    revenue: number;
+    export interface RevenuePayment {
+    paymentId?: number | null;
+    courseId?: number | null;
+    courseTitle?: string | null;
+    studentId?: number | null;
+    studentName?: string | null;
+    studentEmail?: string | null;
+    amount?: number | null;
+    subtotalAmount?: number | null;
+    processingFeeAmount?: number | null;
+    taxAmount?: number | null;
+    totalAmount?: number | null;
+    currency?: string | null;
+    paidAt?: string | number[] | null;
+    month?: string | null;
+    revenue?: number | null;
 }

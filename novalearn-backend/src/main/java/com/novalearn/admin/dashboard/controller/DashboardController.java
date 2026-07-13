@@ -46,9 +46,9 @@ public class DashboardController {
     }
 
     @GetMapping("/revenue")
-    public ResponseEntity<List<MonthlyRevenueResponse>> getRevenueByMonth() {
+    public ResponseEntity<List<RevenuePaymentResponse>> getRevenue() {
         return ResponseEntity.ok(
-                dashboardService.getRevenueByMonth()
+                dashboardService.getRevenue()
         );
     }
 }

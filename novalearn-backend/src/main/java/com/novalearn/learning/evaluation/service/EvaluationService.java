@@ -9,9 +9,12 @@ import com.novalearn.instructor.security.service.InstructorContentAccessService;
 import com.novalearn.learning.enrollment.repository.EnrollmentRepository;
 import com.novalearn.learning.evaluation.dto.EvaluationRequest;
 import com.novalearn.learning.evaluation.dto.EvaluationResponse;
+import com.novalearn.learning.evaluation.dto.StudentEvaluationOverviewResponse;
 import com.novalearn.learning.evaluation.entity.Evaluation;
+import com.novalearn.learning.evaluation.entity.EvaluationAttempt;
 import com.novalearn.learning.evaluation.enums.EvaluationDeliveryMode;
 import com.novalearn.learning.evaluation.enums.EvaluationStatus;
+import com.novalearn.learning.evaluation.repository.EvaluationAttemptRepository;
 import com.novalearn.learning.evaluation.repository.EvaluationRepository;
 import com.novalearn.learning.module.entity.CourseModule;
 import org.springframework.stereotype.Service;
@@ -25,15 +28,18 @@ import java.util.List;
 public class EvaluationService {
 
     private final EvaluationRepository evaluationRepository;
+    private final EvaluationAttemptRepository attemptRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final InstructorContentAccessService accessService;
 
     public EvaluationService(
             EvaluationRepository evaluationRepository,
+            EvaluationAttemptRepository attemptRepository,
             EnrollmentRepository enrollmentRepository,
             InstructorContentAccessService accessService
     ) {
         this.evaluationRepository = evaluationRepository;
+        this.attemptRepository = attemptRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.accessService = accessService;
     }
@@ -169,6 +175,55 @@ public class EvaluationService {
                                         || !evaluation.getAvailableFrom().isAfter(now)
                 )
                 .map(EvaluationResponse::new)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<StudentEvaluationOverviewResponse> findPublishedForStudent(
+            User student
+    ) {
+        validateStudent(student);
+
+        LocalDateTime now = LocalDateTime.now();
+
+        return evaluationRepository
+                .findVisibleByStudentIdAndStatus(
+                        student.getId(),
+                        EvaluationStatus.PUBLISHED
+                )
+                .stream()
+                .filter(
+                        evaluation ->
+                                Boolean.TRUE.equals(
+                                        evaluation.getVisibleInContent()
+                                )
+                )
+                .filter(
+                        evaluation ->
+                                evaluation.getAvailableFrom() == null
+                                        || !evaluation.getAvailableFrom().isAfter(now)
+                )
+                .map(evaluation -> {
+                    EvaluationAttempt latestAttempt =
+                            attemptRepository
+                                    .findFirstByEvaluationIdAndStudentIdOrderByAttemptNumberDesc(
+                                            evaluation.getId(),
+                                            student.getId()
+                                    )
+                                    .orElse(null);
+
+                    long attemptsUsed =
+                            attemptRepository.countByEvaluationIdAndStudentId(
+                                    evaluation.getId(),
+                                    student.getId()
+                            );
+
+                    return new StudentEvaluationOverviewResponse(
+                            evaluation,
+                            latestAttempt,
+                            attemptsUsed
+                    );
+                })
                 .toList();
     }
 
@@ -497,14 +552,7 @@ public class EvaluationService {
             Long courseId,
             User student
     ) {
-        if (
-                student == null
-                        || student.getRole() != UserRole.STUDENT
-        ) {
-            throw new ForbiddenActionException(
-                    "Solo los estudiantes pueden acceder a este recurso"
-            );
-        }
+        validateStudent(student);
 
         enrollmentRepository
                 .findByStudentIdAndCourseIdAndActiveTrueAndDeletedAtIsNull(
@@ -516,6 +564,17 @@ public class EvaluationService {
                                 "No tienes una matrícula activa en este curso"
                         )
                 );
+    }
+
+    private void validateStudent(User student) {
+        if (
+                student == null
+                        || student.getRole() != UserRole.STUDENT
+        ) {
+            throw new ForbiddenActionException(
+                    "Solo los estudiantes pueden acceder a este recurso"
+            );
+        }
     }
 
     private void validatePublishedAndAvailable(

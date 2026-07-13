@@ -3,7 +3,7 @@ import type {
     AdminDashboardSummary,
     LatestEnrollment,
     LatestStudent,
-    RevenueByMonth,
+    RevenuePayment,
     TopCourse,
     } from "../types/admin-dashboard.types";
 
@@ -31,7 +31,7 @@ import type {
     return response.data;
     }
 
-    export async function getRevenueByMonth(): Promise<RevenueByMonth[]> {
-    const response = await api.get<RevenueByMonth[]>("/admin/dashboard/revenue");
+    export async function getRevenue(): Promise<RevenuePayment[]> {
+    const response = await api.get<RevenuePayment[]>("/admin/dashboard/revenue");
     return response.data;
 }

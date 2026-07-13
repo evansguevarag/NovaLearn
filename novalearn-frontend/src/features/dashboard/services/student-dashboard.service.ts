@@ -25,6 +25,18 @@ import type {
     return response.data;
     }
 
+    export async function downloadStudentCertificatePdf(
+        certificateId: number
+    ): Promise<Blob> {
+    const response = await api.get<Blob>(
+        `/certificates/student/${certificateId}/download`,
+        {
+            responseType: "blob",
+        }
+    );
+    return response.data;
+    }
+
     export async function getStudentPayments(): Promise<StudentPayment[]> {
     const response = await api.get<StudentPayment[]>(
         "/student/dashboard/my-payments"

@@ -23,6 +23,12 @@ public interface EvaluationAttemptRepository
             EvaluationAttemptStatus status
     );
 
+    Optional<EvaluationAttempt>
+    findFirstByEvaluationIdAndStudentIdOrderByAttemptNumberDesc(
+            Long evaluationId,
+            Long studentId
+    );
+
     List<EvaluationAttempt>
     findByEvaluationIdAndStudentIdOrderByAttemptNumberDesc(
             Long evaluationId,

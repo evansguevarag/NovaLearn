@@ -21,15 +21,13 @@ export interface StudentDashboardSummary {
     }
 
     export interface StudentCertificate {
+    id: number;
     enrollmentId: number;
     courseId: number;
     courseTitle: string;
-    courseSlug: string;
-    thumbnailUrl: string;
-    categoryName: string;
-    progressPercentage: number;
-    enrolledAt: string;
-    completedAt: string | null;
+    certificateCode: string;
+    certificateUrl: string | null;
+    issuedAt: string;
     }
 
     export interface StudentPayment {
@@ -37,8 +35,19 @@ export interface StudentDashboardSummary {
     courseId: number;
     courseTitle: string;
     amount: number;
+    subtotalAmount: number;
+    processingFeeAmount: number;
+    taxAmount: number;
+    totalAmount: number;
     currency: string;
     status: string;
     provider: string;
+    manualMethod: string | null;
+    manualReference: string | null;
+    manualProofUrl: string | null;
+    manualProofResourceType: string | null;
+    manualReviewedAt: string | null;
+    manualRejectionReason: string | null;
     createdAt: string;
+    paidAt: string | null;
 }

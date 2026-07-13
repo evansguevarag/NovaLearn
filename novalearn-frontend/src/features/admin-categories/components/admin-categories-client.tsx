@@ -64,6 +64,8 @@ export function AdminCategoriesClient() {
     useState(false);
   const [isDeleting, setIsDeleting] =
     useState(false);
+  const [togglingCategoryId, setTogglingCategoryId] =
+    useState<number | null>(null);
   const [error, setError] =
     useState<string | null>(null);
 
@@ -242,8 +244,13 @@ export function AdminCategoriesClient() {
   async function handleToggleStatus(
     category: AdminCategory
   ): Promise<void> {
+    if (togglingCategoryId === category.id) {
+      return;
+    }
+
     try {
       setError(null);
+      setTogglingCategoryId(category.id);
 
       const updatedCategory =
         await updateAdminCategory(category.id, {
@@ -260,16 +267,24 @@ export function AdminCategoriesClient() {
         )
       );
 
-      toast.success(
-        updatedCategory.active
-          ? "Categoría activada."
-          : "Categoría desactivada.",
-        {
-          description: updatedCategory.active
-            ? "Ahora puede utilizarse en cursos nuevos."
-            : "Ya no aparecerá como opción para cursos nuevos.",
-        }
-      );
+      const toastOptions = {
+        id: `category-status-${updatedCategory.id}`,
+        description: updatedCategory.active
+          ? "Ahora puede utilizarse en cursos nuevos."
+          : "Ya no aparecerá como opción para cursos nuevos.",
+      };
+
+      if (updatedCategory.active) {
+        toast.success(
+          "Categoría activada.",
+          toastOptions
+        );
+      } else {
+        toast.warning(
+          "Categoría desactivada.",
+          toastOptions
+        );
+      }
     } catch (error: unknown) {
       const message = getApiErrorMessage(
         error,
@@ -279,8 +294,11 @@ export function AdminCategoriesClient() {
       setError(message);
 
       toast.error("No se pudo cambiar el estado.", {
+        id: `category-status-${category.id}`,
         description: message,
       });
+    } finally {
+      setTogglingCategoryId(null);
     }
   }
 
@@ -548,8 +566,15 @@ export function AdminCategoriesClient() {
                                       category
                                     )
                                   }
+                                  disabled={
+                                    togglingCategoryId ===
+                                    category.id
+                                  }
                                 >
-                                  {category.active ? (
+                                  {togglingCategoryId ===
+                                  category.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : category.active ? (
                                     <PowerOff className="h-4 w-4" />
                                   ) : (
                                     <Power className="h-4 w-4" />

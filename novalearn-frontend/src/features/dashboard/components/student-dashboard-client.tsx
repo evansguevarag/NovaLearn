@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
+    ArrowRight,
     BookOpen,
     CreditCard,
     Loader2,
@@ -12,6 +14,7 @@ import {
     import { DashboardShell } from "@/components/layout/dashboard-shell";
     import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
     import { Badge } from "@/components/ui/badge";
+    import { Button } from "@/components/ui/button";
     import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     import {
     Table,
@@ -105,6 +108,7 @@ import {
                 value={summary.enrolledCourses}
                 description="Cursos activos en tu cuenta"
                 icon={BookOpen}
+                href="/student/courses"
             />
 
             <StudentMetricCard
@@ -112,6 +116,7 @@ import {
                 value={summary.completedCourses}
                 description="Cursos finalizados"
                 icon={Medal}
+                href="/student/courses"
             />
 
             <StudentMetricCard
@@ -119,6 +124,7 @@ import {
                 value={summary.certificates}
                 description="Certificados obtenidos"
                 icon={Medal}
+                href="/student/certificates"
             />
 
             <StudentMetricCard
@@ -126,6 +132,7 @@ import {
                 value={`${summary.averageProgress}%`}
                 description={`Total pagado: S/ ${summary.totalPaid.toFixed(2)}`}
                 icon={TrendingUp}
+                href="/student/courses"
             />
             </div>
         )}
@@ -146,6 +153,7 @@ import {
     value: string | number;
     description: string;
     icon: React.ElementType;
+    href: string;
     }
 
     function StudentMetricCard({
@@ -153,6 +161,7 @@ import {
     value,
     description,
     icon: Icon,
+    href,
     }: StudentMetricCardProps) {
     return (
         <Card>
@@ -166,6 +175,12 @@ import {
         <CardContent>
             <p className="text-3xl font-bold">{value}</p>
             <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+            <Button asChild variant="link" className="mt-3 h-auto p-0">
+            <Link href={href}>
+                Ver detalle
+                <ArrowRight className="ml-1 h-4 w-4" />
+            </Link>
+            </Button>
         </CardContent>
         </Card>
     );
@@ -174,8 +189,11 @@ import {
     function CoursesTable({ courses }: { courses: StudentCourse[] }) {
     return (
         <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
             <CardTitle>Mis cursos</CardTitle>
+            <Button asChild variant="outline" size="sm">
+            <Link href="/student/courses">Ver todos</Link>
+            </Button>
         </CardHeader>
 
         <CardContent>
@@ -189,7 +207,7 @@ import {
             </TableHeader>
 
             <TableBody>
-                {courses.map((course) => (
+                {courses.slice(0, 5).map((course) => (
                 <TableRow key={course.enrollmentId}>
                     <TableCell className="font-medium">
                     {course.courseTitle}
@@ -220,8 +238,11 @@ import {
     }) {
     return (
         <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
             <CardTitle>Mis certificados</CardTitle>
+            <Button asChild variant="outline" size="sm">
+            <Link href="/student/certificates">Ver todos</Link>
+            </Button>
         </CardHeader>
 
         <CardContent>
@@ -230,34 +251,28 @@ import {
                 <TableRow>
                 <TableHead>Curso</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead>Completado</TableHead>
+                <TableHead>Emisión</TableHead>
                 </TableRow>
             </TableHeader>
 
             <TableBody>
-                {certificates.map((certificate) => (
-                <TableRow key={certificate.enrollmentId}>
+                {certificates.slice(0, 5).map((certificate) => (
+                <TableRow key={certificate.id}>
                     <TableCell className="font-medium">
                     {certificate.courseTitle}
                     </TableCell>
                     <TableCell>
-                    {certificate.completedAt ? (
-                        <Badge>Disponible</Badge>
-                    ) : (
-                        <Badge variant="secondary">Pendiente</Badge>
-                    )}
+                    <Badge>Disponible</Badge>
                     </TableCell>
                     <TableCell>
-                    {certificate.completedAt
-                        ? new Date(certificate.completedAt).toLocaleDateString("es-PE")
-                        : "-"}
+                    {new Date(certificate.issuedAt).toLocaleDateString("es-PE")}
                     </TableCell>
                 </TableRow>
                 ))}
 
                 {certificates.length === 0 && (
                 <TableRow>
-                    <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
+                    <TableCell colSpan={3} className="py-6 text-center text-muted-foreground">
                     No tienes certificados.
                     </TableCell>
                 </TableRow>
@@ -272,8 +287,11 @@ import {
     function PaymentsTable({ payments }: { payments: StudentPayment[] }) {
     return (
         <Card className="xl:col-span-2">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
             <CardTitle>Mis pagos</CardTitle>
+            <Button asChild variant="outline" size="sm">
+            <Link href="/student/payments">Ver todos</Link>
+            </Button>
         </CardHeader>
 
         <CardContent>
@@ -288,7 +306,7 @@ import {
             </TableHeader>
 
             <TableBody>
-                {payments.map((payment) => (
+                {payments.slice(0, 5).map((payment) => (
                 <TableRow key={payment.id}>
                     <TableCell className="font-medium">
                     {payment.courseTitle}

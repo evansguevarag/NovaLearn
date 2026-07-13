@@ -64,14 +64,14 @@ public interface EnrollmentRepository
     @Query(
             value = """
                     SELECT
-                        c.id,
+                        MIN(c.id) AS course_id,
                         c.title,
                         COUNT(e.id) AS total_enrollments
                     FROM enrollments e
                     INNER JOIN courses c
                         ON c.id = e.course_id
                     WHERE e.deleted_at IS NULL
-                    GROUP BY c.id, c.title
+                    GROUP BY c.title
                     ORDER BY total_enrollments DESC
                     LIMIT 5
                     """,

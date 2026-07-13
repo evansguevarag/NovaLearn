@@ -2,12 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
   CheckCircle2,
+  Clock3,
   Loader2,
   PlayCircle,
+  TrendingUp,
 } from "lucide-react";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
@@ -68,6 +70,11 @@ export function StudentCoursesClient() {
     void loadCourses();
   }, [isChecking]);
 
+  const stats = useMemo(
+    () => buildCourseStats(courses),
+    [courses]
+  );
+
   if (isChecking) {
     return (
       <main className="p-8">
@@ -99,6 +106,37 @@ export function StudentCoursesClient() {
 
       {!isLoading &&
         !error &&
+        courses.length > 0 && (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <CourseMetricCard
+              title="Progreso promedio"
+              value={`${stats.averageProgress}%`}
+              description="Promedio de tus cursos"
+              icon={TrendingUp}
+            />
+            <CourseMetricCard
+              title="En progreso"
+              value={stats.inProgressCourses}
+              description="Cursos iniciados"
+              icon={Clock3}
+            />
+            <CourseMetricCard
+              title="Completados"
+              value={stats.completedCourses}
+              description="Cursos finalizados"
+              icon={CheckCircle2}
+            />
+            <CourseMetricCard
+              title="Por iniciar"
+              value={stats.pendingCourses}
+              description="Cursos sin avance"
+              icon={BookOpen}
+            />
+          </div>
+        )}
+
+      {!isLoading &&
+        !error &&
         courses.length === 0 && (
           <Card>
             <CardContent className="flex min-h-72 flex-col items-center justify-center p-8 text-center">
@@ -119,7 +157,7 @@ export function StudentCoursesClient() {
       {!isLoading &&
         !error &&
         courses.length > 0 && (
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             {courses.map((course) => (
               <StudentCourseCard
                 key={course.enrollmentId}
@@ -129,6 +167,35 @@ export function StudentCoursesClient() {
           </div>
         )}
     </DashboardShell>
+  );
+}
+
+function CourseMetricCard({
+  title,
+  value,
+  description,
+  icon: Icon,
+}: {
+  title: string;
+  value: string | number;
+  description: string;
+  icon: React.ElementType;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {title}
+        </CardTitle>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <p className="text-3xl font-bold">{value}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {description}
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -178,6 +245,18 @@ function StudentCourseCard({
             <Badge>
               <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
               Completado
+            </Badge>
+          )}
+
+          {!completed && progress > 0 && (
+            <Badge variant="secondary">
+              En progreso
+            </Badge>
+          )}
+
+          {!completed && progress === 0 && (
+            <Badge variant="outline">
+              Por iniciar
             </Badge>
           )}
         </div>
@@ -235,4 +314,39 @@ function StudentCourseCard({
       </CardFooter>
     </Card>
   );
+}
+
+function buildCourseStats(courses: StudentCourse[]) {
+  const completedCourses = courses.filter(isCourseCompleted).length;
+  const inProgressCourses = courses.filter(
+    (course) =>
+      !isCourseCompleted(course) && getCourseProgress(course) > 0
+  ).length;
+  const pendingCourses =
+    courses.length - completedCourses - inProgressCourses;
+  const averageProgress =
+    courses.length === 0
+      ? 0
+      : courses.reduce(
+          (total, course) => total + getCourseProgress(course),
+          0
+        ) / courses.length;
+
+  return {
+    completedCourses,
+    inProgressCourses,
+    pendingCourses,
+    averageProgress: Math.round(averageProgress),
+  };
+}
+
+function getCourseProgress(course: StudentCourse): number {
+  return Math.min(
+    100,
+    Math.max(0, Math.round(Number(course.progressPercentage)))
+  );
+}
+
+function isCourseCompleted(course: StudentCourse): boolean {
+  return course.completedAt !== null || getCourseProgress(course) >= 100;
 }

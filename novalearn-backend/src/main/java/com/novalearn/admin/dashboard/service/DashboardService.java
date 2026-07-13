@@ -11,7 +11,6 @@ import com.novalearn.payment.repository.PaymentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.List;
 
@@ -82,13 +81,12 @@ public class DashboardService {
     }
 
     @Transactional(readOnly = true)
-    public List<MonthlyRevenueResponse> getRevenueByMonth() {
-        return paymentRepository.calculateRevenueByMonth()
+    public List<RevenuePaymentResponse> getRevenue() {
+        return paymentRepository.findByStatusOrderByPaidAtDesc(
+                        com.novalearn.payment.enums.PaymentStatus.PAID
+                )
                 .stream()
-                .map(row -> new MonthlyRevenueResponse(
-                        String.valueOf(row[0]),
-                        toBigDecimal(row[1])
-                ))
+                .map(RevenuePaymentResponse::new)
                 .toList();
     }
 
@@ -104,15 +102,4 @@ public class DashboardService {
         return Long.parseLong(String.valueOf(value));
     }
 
-    private BigDecimal toBigDecimal(Object value) {
-        if (value instanceof BigDecimal bigDecimal) {
-            return bigDecimal;
-        }
-
-        if (value instanceof Number number) {
-            return BigDecimal.valueOf(number.doubleValue());
-        }
-
-        return new BigDecimal(String.valueOf(value));
-    }
 }
