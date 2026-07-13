@@ -1,8 +1,11 @@
 package com.novalearn.payment.repository;
 
 import com.novalearn.payment.entity.Payment;
+import com.novalearn.payment.enums.PaymentProvider;
 import com.novalearn.payment.enums.PaymentStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 import java.math.BigDecimal;
@@ -14,9 +17,53 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
         Optional<Payment> findByIdAndStudentId(Long id, Long studentId);
 
+        @Lock(LockModeType.PESSIMISTIC_WRITE)
+        @Query("""
+        SELECT p
+        FROM Payment p
+        WHERE p.id = :id
+        AND p.student.id = :studentId
+        """)
+        Optional<Payment> findByIdAndStudentIdForUpdate(
+                @Param("id") Long id,
+                @Param("studentId") Long studentId
+        );
+
+        Optional<Payment> findFirstByStudentIdAndCourseIdAndCurrencyAndAmountAndStatusOrderByCreatedAtDesc(
+                Long studentId,
+                Long courseId,
+                String currency,
+                BigDecimal amount,
+                PaymentStatus status
+        );
+
+        Optional<Payment> findByProviderOrderId(String providerOrderId);
+
         List<Payment> findByStudentIdOrderByCreatedAtDesc(Long studentId);
 
         List<Payment> findByStatusOrderByCreatedAtDesc(PaymentStatus status);
+
+        List<Payment> findByStatusOrderByPaidAtDesc(PaymentStatus status);
+
+        List<Payment> findByProviderOrderByCreatedAtDesc(PaymentProvider provider);
+
+        List<Payment> findByProviderAndStatusOrderByCreatedAtDesc(
+                PaymentProvider provider,
+                PaymentStatus status
+        );
+
+        Optional<Payment> findFirstByStudentIdAndCourseIdAndProviderAndStatusOrderByCreatedAtDesc(
+                Long studentId,
+                Long courseId,
+                PaymentProvider provider,
+                PaymentStatus status
+        );
+
+        Optional<Payment> findFirstByStudentIdAndCourseIdAndStatusOrderByCreatedAtDesc(
+                Long studentId,
+                Long courseId,
+                PaymentStatus status
+        );
 
         List<Payment> findAllByOrderByCreatedAtDesc();
 
@@ -39,17 +86,4 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
                 @Param("instructorId") Long instructorId
         );
 
-        @Query(
-        value = """
-                SELECT 
-                        TO_CHAR(created_at, 'YYYY-MM') AS month,
-                        COALESCE(SUM(amount), 0) AS revenue
-                FROM payments
-                WHERE status = 'PAID'
-                GROUP BY TO_CHAR(created_at, 'YYYY-MM')
-                ORDER BY month ASC
-                """,
-        nativeQuery = true
-        )
-        List<Object[]> calculateRevenueByMonth();
 }

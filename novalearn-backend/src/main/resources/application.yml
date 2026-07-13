@@ -28,7 +28,11 @@ spring:
       max-request-size: 20MB  
 
 app:
+  certificates:
+    verification-base-url: ${CERTIFICATE_VERIFICATION_BASE_URL:http://localhost:8080/api/v1/certificates/code}
+
   security:
+    login-otp-enabled: ${LOGIN_OTP_ENABLED:false}
     jwt:
       secret: ${JWT_SECRET}
       access-token-expiration-minutes: ${JWT_ACCESS_EXPIRATION_MINUTES}
@@ -60,3 +64,7 @@ app:
     api-base-url: ${CULQI_API_BASE_URL:https://api.culqi.com/v2}
     public-key: ${CULQI_PUBLIC_KEY:}
     secret-key: ${CULQI_SECRET_KEY:}
+    phone-number: ${CULQI_PHONE_NUMBER:999999999}
+    processing-fee-percentage: ${CULQI_PROCESSING_FEE_PERCENTAGE:0}
+    processing-fee-tax-percentage: ${CULQI_PROCESSING_FEE_TAX_PERCENTAGE:18}
+    pass-processing-fee-to-student: ${CULQI_PASS_PROCESSING_FEE_TO_STUDENT:true}

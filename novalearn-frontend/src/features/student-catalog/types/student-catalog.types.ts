@@ -56,18 +56,42 @@ export type StudentCatalogPaymentStatus =
   | "PROCESSING"
   | "PAID"
   | "FAILED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "REJECTED";
 
 export interface StudentCatalogPayment {
   id: number;
   studentId: number;
   studentEmail: string;
+  studentFullName: string;
   courseId: number;
   courseTitle: string;
   amount: number;
+  subtotalAmount: number;
+  processingFeeAmount: number;
+  taxAmount: number;
+  totalAmount: number;
   currency: string;
   status: StudentCatalogPaymentStatus;
   provider: string;
   providerPaymentId: string | null;
+  providerOrderId: string | null;
+  providerOrderStatus: string | null;
+  providerOrderExpiresAt: string | null;
+  manualMethod: string | null;
+  manualReference: string | null;
+  manualProofUrl: string | null;
+  manualProofResourceType: string | null;
+  manualReviewedAt: string | null;
+  manualRejectionReason: string | null;
   createdAt: string;
+  paidAt: string | null;
+}
+
+export interface StudentPaymentSettings {
+  processingFeePercentage: number;
+  processingFeeTaxPercentage: number;
+  passProcessingFeeToStudent: boolean;
+  culqiPaymentsEnabled: boolean;
+  manualPaymentsEnabled: boolean;
 }

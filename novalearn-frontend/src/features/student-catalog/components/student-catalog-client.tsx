@@ -8,6 +8,7 @@ import {
   GraduationCap,
   Loader2,
   PlayCircle,
+  ReceiptText,
   Search,
   ShoppingCart,
   Sparkles,
@@ -16,6 +17,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { toast } from "sonner";
@@ -48,11 +50,15 @@ import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { getApiErrorMessage } from "@/lib/get-api-error-message";
 
 import {
+  cancelStudentCoursePayment,
   createCulqiCharge,
+  createCulqiOrder,
+  createManualStudentCoursePayment,
   createStudentCoursePayment,
   enrollFreeStudentCourse,
   getStudentCatalogCategories,
   getStudentCatalogCourses,
+  getStudentPaymentSettings,
 } from "@/features/student-catalog/services/student-catalog.service";
 import type {
   StudentCatalogCategory,
@@ -60,35 +66,81 @@ import type {
   StudentCatalogCourseType,
   StudentCatalogFilters,
   StudentCatalogPayment,
+  StudentPaymentSettings,
 } from "@/features/student-catalog/types/student-catalog.types";
 
 const CULQI_CHECKOUT_SCRIPT =
-  "https://checkout.culqi.com/js/v4";
+  "https://js.culqi.com/checkout-js";
+
+const DEFAULT_STUDENT_PAYMENT_SETTINGS: StudentPaymentSettings = {
+  processingFeePercentage: 4.02,
+  processingFeeTaxPercentage: 0,
+  passProcessingFeeToStudent: true,
+  culqiPaymentsEnabled: true,
+  manualPaymentsEnabled: true,
+};
+
+interface CulqiCheckoutInstance {
+  token?: {
+    id?: string;
+  };
+  order?: {
+    id?: string;
+  };
+  error?: {
+    code?: string;
+    user_message?: string;
+    merchant_message?: string;
+  };
+  culqi?: () => void;
+  open: () => void;
+  close: () => void;
+}
+
+interface CulqiCheckoutConfig {
+  settings: {
+    title: string;
+    currency: string;
+    amount: number;
+    order?: string;
+    xculqirsaid?: string;
+    rsapublickey?: string;
+  };
+  client: {
+    email: string;
+  };
+  options: {
+    lang: "es";
+    installments: boolean;
+    modal: boolean;
+    paymentMethods: {
+      tarjeta: boolean;
+      yape: boolean;
+      billetera: boolean;
+      bancaMovil: boolean;
+      agente: boolean;
+      cuotealo: boolean;
+    };
+    paymentMethodsSort: string[];
+  };
+  appearance: {
+    theme: "default";
+    hiddenCulqiLogo: boolean;
+    hiddenBannerContent: boolean;
+    hiddenBanner: boolean;
+    hiddenToolBarAmount: boolean;
+    hiddenEmail: boolean;
+    menuType: "sidebar";
+    buttonCardPayText: string;
+  };
+}
 
 declare global {
   interface Window {
-    Culqi?: {
-      publicKey: string;
-      settings: (options: {
-        title: string;
-        currency: string;
-        amount: number;
-      }) => void;
-      options: (options: {
-        lang: string;
-        installments: boolean;
-        modal: boolean;
-      }) => void;
-      open: () => void;
-      token?: {
-        id?: string;
-      };
-      error?: {
-        user_message?: string;
-        merchant_message?: string;
-      };
-    };
-    culqi?: () => void;
+    CulqiCheckout?: new (
+      publicKey: string,
+      config: CulqiCheckoutConfig
+    ) => CulqiCheckoutInstance;
   }
 }
 
@@ -101,6 +153,32 @@ type SelectableLevel =
   | "INTERMEDIATE"
   | "ADVANCED"
   | "ALL";
+
+type CulqiPaymentResult =
+  | {
+      type: "TOKEN";
+      sourceId: string;
+    }
+  | {
+      type: "ORDER";
+    };
+
+class CulqiCheckoutError extends Error {
+  readonly code?: string;
+
+  constructor(message: string, code?: string) {
+    super(message);
+    this.name = "CulqiCheckoutError";
+    this.code = code;
+  }
+}
+
+class CulqiCheckoutClosedError extends Error {
+  constructor() {
+    super("Checkout cerrado por el usuario.");
+    this.name = "CulqiCheckoutClosedError";
+  }
+}
 
 export function StudentCatalogClient() {
   const { isChecking } = useAuthGuard(["STUDENT"]);
@@ -131,8 +209,19 @@ export function StudentCatalogClient() {
     useState<number | null>(null);
   const [pendingPayment, setPendingPayment] =
     useState<StudentCatalogPayment | null>(null);
+  const [paymentSettings, setPaymentSettings] =
+    useState<StudentPaymentSettings>(DEFAULT_STUDENT_PAYMENT_SETTINGS);
   const [processingPaymentId, setProcessingPaymentId] =
     useState<number | null>(null);
+  const [preparingOrderPaymentId, setPreparingOrderPaymentId] =
+    useState<number | null>(null);
+  const [submittingManualPaymentId, setSubmittingManualPaymentId] =
+    useState<number | null>(null);
+  const [isCulqiCheckoutOpen, setIsCulqiCheckoutOpen] =
+    useState(false);
+  const paymentLocksRef = useRef<Set<number>>(new Set());
+  const paymentAttemptCountRef = useRef(0);
+  const isOpeningCulqiCheckoutRef = useRef(false);
 
   const filters = useMemo<StudentCatalogFilters>(() => {
     const normalizedQuery = query.trim();
@@ -204,6 +293,18 @@ export function StudentCatalogClient() {
     }
   }, []);
 
+  const loadPaymentSettings = useCallback(async () => {
+    try {
+      setPaymentSettings(await getStudentPaymentSettings());
+    } catch (error) {
+      console.warn(
+        "No se pudo cargar la configuración de pagos",
+        getApiErrorMessage(error)
+      );
+      setPaymentSettings(DEFAULT_STUDENT_PAYMENT_SETTINGS);
+    }
+  }, []);
+
   useEffect(() => {
     if (isChecking) {
       return;
@@ -211,10 +312,11 @@ export function StudentCatalogClient() {
 
     const timeoutId = window.setTimeout(() => {
       void loadCategories();
+      void loadPaymentSettings();
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [isChecking, loadCategories]);
+  }, [isChecking, loadCategories, loadPaymentSettings]);
 
   useEffect(() => {
     if (isChecking) {
@@ -227,6 +329,19 @@ export function StudentCatalogClient() {
 
     return () => window.clearTimeout(timeoutId);
   }, [isChecking, loadCatalog]);
+
+  useEffect(() => {
+    if (isChecking || !paymentSettings.culqiPaymentsEnabled) {
+      return;
+    }
+
+    void loadCulqiCheckout().catch((error) => {
+      console.warn(
+        "No se pudo precargar Culqi Checkout",
+        error
+      );
+    });
+  }, [isChecking, paymentSettings.culqiPaymentsEnabled]);
 
   async function handleEnroll(
     course: StudentCatalogCourse
@@ -265,13 +380,26 @@ export function StudentCatalogClient() {
     try {
       setCreatingPaymentCourseId(course.id);
 
-      const payment =
-        await createStudentCoursePayment(course.id);
+      const [payment] = await Promise.all([
+        createStudentCoursePayment(course.id),
+        paymentSettings.culqiPaymentsEnabled
+          ? loadCulqiCheckout().catch((error) => {
+              console.warn(
+                "No se pudo precargar Culqi Checkout",
+                error
+              );
+            })
+          : Promise.resolve(),
+      ]);
 
       setPendingPayment(payment);
+      if (paymentSettings.culqiPaymentsEnabled) {
+        void prepareCulqiOrder(payment);
+      }
 
-      toast.success("Pago pendiente creado.", {
-        description: course.title,
+      toast.warning("Pago pendiente creado.", {
+        description:
+          "Completa el pago para activar tu matrícula.",
       });
     } catch (error) {
       toast.error("No se pudo iniciar el checkout.", {
@@ -285,16 +413,40 @@ export function StudentCatalogClient() {
   async function handlePayWithCulqi(
     payment: StudentCatalogPayment
   ): Promise<void> {
+    if (paymentLocksRef.current.has(payment.id)) {
+      return;
+    }
+
+    paymentLocksRef.current.add(payment.id);
+    paymentAttemptCountRef.current += 1;
+
     try {
       setProcessingPaymentId(payment.id);
+      isOpeningCulqiCheckoutRef.current = true;
 
-      const sourceId =
-        await requestCulqiToken(payment);
-      const updatedPayment =
-        await createCulqiCharge(
-          payment.id,
-          sourceId
+      setPendingPayment(null);
+
+      console.info("Culqi payment function executed", {
+        paymentId: payment.id,
+        executionCount: paymentAttemptCountRef.current,
+        executedAt: new Date().toISOString(),
+      });
+
+      const paymentWithOrder =
+        await ensureCulqiOrder(payment);
+      const culqiResult =
+        await requestCulqiPayment(
+          paymentWithOrder,
+          setIsCulqiCheckoutOpen
         );
+
+      const updatedPayment =
+        culqiResult.type === "TOKEN"
+          ? await createCulqiCharge(
+              paymentWithOrder.id,
+              culqiResult.sourceId
+            )
+          : paymentWithOrder;
 
       setPendingPayment(updatedPayment);
 
@@ -311,22 +463,138 @@ export function StudentCatalogClient() {
           )
         );
 
+        setPendingPayment(null);
+
         toast.success("Pago confirmado.", {
           description:
             updatedPayment.courseTitle,
         });
+      } else if (culqiResult.type === "ORDER") {
+        setPendingPayment(updatedPayment);
       } else {
+        setPendingPayment(updatedPayment);
+
         toast.error("Pago no confirmado.", {
           description:
-            "Culqi no aprobó el cargo.",
+            "Culqi no aprobó la operación.",
         });
       }
     } catch (error) {
+      if (error instanceof CulqiCheckoutClosedError) {
+        try {
+          await cancelStudentCoursePayment(payment.id);
+        } catch (cancelError) {
+          console.warn(
+            "No se pudo cancelar el pago pendiente",
+            getApiErrorMessage(cancelError)
+          );
+        }
+
+        setPendingPayment(null);
+
+        toast.info("Pago cancelado.", {
+          description:
+            "Puedes volver al catálogo y elegir el curso correcto.",
+        });
+        return;
+      }
+
+      setPendingPayment(payment);
+
       toast.error("No se pudo procesar el pago.", {
         description: getApiErrorMessage(error),
       });
     } finally {
+      isOpeningCulqiCheckoutRef.current = false;
+      paymentLocksRef.current.delete(payment.id);
       setProcessingPaymentId(null);
+    }
+  }
+
+  async function handleManualPaymentSubmit(
+    payment: StudentCatalogPayment,
+    method: string,
+    reference: string,
+    file: File
+  ): Promise<void> {
+    try {
+      setSubmittingManualPaymentId(payment.id);
+
+      const manualPayment =
+        await createManualStudentCoursePayment(
+          payment.courseId,
+          method,
+          reference,
+          file
+        );
+
+      setPendingPayment(manualPayment);
+
+      toast.warning("Comprobante enviado.", {
+        description:
+          "Revisaremos tu pago y activaremos la matrícula cuando sea aprobado.",
+      });
+    } catch (error) {
+      toast.error("No se pudo enviar el comprobante.", {
+        description: getApiErrorMessage(error),
+      });
+    } finally {
+      setSubmittingManualPaymentId(null);
+    }
+  }
+
+  async function prepareCulqiOrder(
+    payment: StudentCatalogPayment
+  ): Promise<void> {
+    if (payment.providerOrderId) {
+      return;
+    }
+
+    try {
+      setPreparingOrderPaymentId(payment.id);
+
+      const paymentWithOrder =
+        await createCulqiOrder(payment.id);
+
+      setPendingPayment((currentPayment) =>
+        currentPayment?.id === payment.id
+          ? paymentWithOrder
+          : currentPayment
+      );
+    } catch (error) {
+      console.warn(
+        "No se pudo preparar la orden Culqi en segundo plano",
+        getApiErrorMessage(error)
+      );
+    } finally {
+      setPreparingOrderPaymentId((currentId) =>
+        currentId === payment.id ? null : currentId
+      );
+    }
+  }
+
+  async function ensureCulqiOrder(
+    payment: StudentCatalogPayment
+  ): Promise<StudentCatalogPayment> {
+    return createCulqiOrder(payment.id);
+  }
+
+  async function handleClosePendingPayment(): Promise<void> {
+    const payment = pendingPayment;
+
+    setPendingPayment(null);
+
+    if (!payment || payment.status !== "PENDING") {
+      return;
+    }
+
+    try {
+      await cancelStudentCoursePayment(payment.id);
+    } catch (error) {
+      console.warn(
+        "No se pudo cancelar el pago pendiente",
+        getApiErrorMessage(error)
+      );
     }
   }
 
@@ -400,7 +668,7 @@ export function StudentCatalogClient() {
         {!isLoading &&
           !error &&
           courses.length > 0 && (
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
               {courses.map((course) => (
                 <CatalogCourseCard
                   key={course.id}
@@ -420,18 +688,40 @@ export function StudentCatalogClient() {
           )}
 
         <PendingPaymentDialog
+          key={pendingPayment?.id ?? "empty-payment"}
           payment={pendingPayment}
           isProcessing={
             pendingPayment !== null &&
             processingPaymentId === pendingPayment.id
           }
+          isPreparingOrder={
+            pendingPayment !== null &&
+            preparingOrderPaymentId === pendingPayment.id
+          }
+          isSubmittingManual={
+            pendingPayment !== null &&
+            submittingManualPaymentId === pendingPayment.id
+          }
+          paymentSettings={paymentSettings}
           onPay={handlePayWithCulqi}
+          onManualSubmit={handleManualPaymentSubmit}
           onOpenChange={(open) => {
             if (!open) {
-              setPendingPayment(null);
+              if (isOpeningCulqiCheckoutRef.current) {
+                return;
+              }
+
+              void handleClosePendingPayment();
             }
           }}
         />
+
+        {isCulqiCheckoutOpen && (
+          <div
+            className="pointer-events-none fixed inset-0 z-40 bg-background/25 backdrop-blur-sm"
+            aria-hidden="true"
+          />
+        )}
       </div>
     </DashboardShell>
   );
@@ -788,22 +1078,55 @@ function CourseAction({
 function PendingPaymentDialog({
   payment,
   isProcessing,
+  isPreparingOrder,
+  isSubmittingManual,
+  paymentSettings,
   onPay,
+  onManualSubmit,
   onOpenChange,
 }: {
   payment: StudentCatalogPayment | null;
   isProcessing: boolean;
+  isPreparingOrder: boolean;
+  isSubmittingManual: boolean;
+  paymentSettings: StudentPaymentSettings;
   onPay: (
     payment: StudentCatalogPayment
   ) => Promise<void>;
+  onManualSubmit: (
+    payment: StudentCatalogPayment,
+    method: string,
+    reference: string,
+    file: File
+  ) => Promise<void>;
   onOpenChange: (open: boolean) => void;
 }) {
+  const [manualMethod, setManualMethod] = useState("Yape");
+  const [manualReference, setManualReference] = useState("");
+  const [manualProofFile, setManualProofFile] =
+    useState<File | null>(null);
+  const [showManualForm, setShowManualForm] = useState(false);
+
+  const canSubmitManual =
+    payment !== null &&
+    manualMethod.trim().length > 0 &&
+    manualProofFile !== null &&
+    !isSubmittingManual;
+
   return (
     <Dialog
       open={payment !== null}
       onOpenChange={onOpenChange}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className={
+          showManualForm
+            ? "max-h-[88vh] overflow-y-auto sm:max-w-3xl"
+            : "sm:max-w-md"
+        }
+        onEscapeKeyDown={(event) => event.preventDefault()}
+        onInteractOutside={(event) => event.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>
             {payment?.status === "PAID"
@@ -814,43 +1137,195 @@ function PendingPaymentDialog({
           <DialogDescription>
             {payment?.status === "PAID"
               ? "Tu matrícula ya fue activada."
-              : "Completa el pago con Culqi. La matrícula se activará solo después de la confirmación del proveedor."}
+              : showManualForm
+                ? "Envía tu comprobante para revisión administrativa."
+                : "Completa el pago con Culqi o envía tu comprobante para revisión."}
           </DialogDescription>
         </DialogHeader>
 
         {payment && (
-          <div className="space-y-4">
-            <div className="rounded-lg border bg-muted/30 p-4">
+          <div
+            className={
+              showManualForm
+                ? "grid gap-4 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"
+                : "space-y-4"
+            }
+          >
+            <div className="rounded-lg border bg-muted/30 p-4 self-start">
               <p className="text-sm font-medium">
                 {payment.courseTitle}
               </p>
 
               <p className="mt-2 text-2xl font-bold">
-                {formatPrice(payment.amount)}
+                {formatPrice(payment.totalAmount ?? payment.amount)}
               </p>
+
+              <div className="mt-4 rounded-md bg-background p-3 text-sm">
+                <div className="flex items-center justify-between gap-3 font-medium">
+                  <span>Precio del curso</span>
+                  <span className="shrink-0">
+                    {formatPrice(
+                      payment.totalAmount ?? payment.amount
+                    )}
+                  </span>
+                </div>
+              </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
                 <Badge variant="secondary">
-                  {payment.status}
+                  {translatePaymentStatus(payment.status)}
                 </Badge>
-                <Badge variant="outline">
-                  {payment.provider}
-                </Badge>
+                {!showManualForm && (
+                  <Badge variant="outline">
+                    {payment.provider}
+                  </Badge>
+                )}
+                {showManualForm && (
+                  <Badge variant="outline">
+                    MANUAL
+                  </Badge>
+                )}
               </div>
+
+              {showManualForm && (
+                <div className="mt-4 rounded-md bg-background p-3 text-sm">
+                  <p className="text-xs text-muted-foreground">
+                    Solicitante
+                  </p>
+                  <p className="mt-1 font-medium">
+                    {payment.studentFullName}
+                  </p>
+                </div>
+              )}
             </div>
 
-            <Alert>
-              <AlertTitle>
-                {payment.status === "PAID"
-                  ? "Matrícula activada"
-                  : "Confirmación segura"}
-              </AlertTitle>
-              <AlertDescription>
-                {payment.status === "PAID"
-                  ? "Ya puedes ingresar al curso desde tus cursos matriculados."
-                  : "NovaLearn verificará el cargo en backend antes de marcar el pago como aprobado."}
-              </AlertDescription>
-            </Alert>
+            {showManualForm && (
+              <Alert className="md:hidden">
+                <AlertTitle>Revisión administrativa</AlertTitle>
+                <AlertDescription>
+                  Validaremos tu comprobante antes de activar la matrícula.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {!showManualForm && (
+              <Alert>
+                <AlertTitle>
+                  {payment.status === "PAID"
+                    ? "Matrícula activada"
+                    : payment.provider === "MANUAL"
+                      ? "Comprobante en revisión"
+                      : "Pago seguro"}
+                </AlertTitle>
+                <AlertDescription>
+                  {payment.status === "PAID"
+                    ? "Ya puedes ingresar al curso desde tus cursos matriculados."
+                    : payment.provider === "MANUAL"
+                      ? "Validaremos tu comprobante antes de activar la matrícula."
+                      : "Validaremos tu pago de forma segura antes de activar tu matrícula."}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {payment.status === "PENDING" &&
+              payment.provider !== "MANUAL" &&
+              showManualForm &&
+              paymentSettings.manualPaymentsEnabled && (
+              <div className="rounded-lg border p-4">
+                <div className="flex items-start gap-3">
+                  <ReceiptText className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">Registrar pago manual</p>
+                    <p className="text-sm text-muted-foreground">
+                      Ingresa el canal usado y adjunta tu comprobante.
+                      Revisaremos el pago antes de activar tu matrícula.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3">
+                  <label className="grid gap-2 text-sm font-medium">
+                    Método de pago
+                    <Input
+                      value={manualMethod}
+                      onChange={(event) =>
+                        setManualMethod(event.target.value)
+                      }
+                      placeholder="Yape, Plin, transferencia"
+                    />
+                  </label>
+
+                  <label className="grid gap-2 text-sm font-medium">
+                    Operación o referencia
+                    <Input
+                      value={manualReference}
+                      onChange={(event) =>
+                        setManualReference(event.target.value)
+                      }
+                      placeholder="Opcional"
+                    />
+                  </label>
+
+                  <label className="grid gap-2 text-sm font-medium">
+                    Comprobante
+                    <Input
+                      type="file"
+                      accept="image/*,.pdf,application/pdf"
+                      onChange={(event) =>
+                        setManualProofFile(
+                          event.target.files?.[0] ?? null
+                        )
+                      }
+                    />
+                  </label>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!canSubmitManual}
+                    onClick={() => {
+                      if (payment && manualProofFile) {
+                        void onManualSubmit(
+                          payment,
+                          manualMethod,
+                          manualReference,
+                          manualProofFile
+                        );
+                      }
+                    }}
+                  >
+                    {isSubmittingManual ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <ReceiptText className="mr-2 h-4 w-4" />
+                    )}
+                    Enviar comprobante
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {payment.status === "REJECTED" && (
+              <Alert variant="destructive">
+                <AlertTitle>Comprobante rechazado</AlertTitle>
+                <AlertDescription>
+                  {payment.manualRejectionReason ??
+                    "Envía un nuevo comprobante para continuar."}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {payment.status === "PENDING" &&
+              !paymentSettings.culqiPaymentsEnabled &&
+              !paymentSettings.manualPaymentsEnabled && (
+                <Alert variant="destructive">
+                  <AlertTitle>Métodos no disponibles</AlertTitle>
+                  <AlertDescription>
+                    No hay métodos de pago activos en este momento.
+                    Intenta nuevamente más tarde.
+                  </AlertDescription>
+                </Alert>
+              )}
           </div>
         )}
 
@@ -866,20 +1341,44 @@ function PendingPaymentDialog({
             </Button>
           )}
 
-          {payment?.status === "PENDING" && (
-            <Button
-              type="button"
-              disabled={isProcessing}
-              onClick={() => void onPay(payment)}
-            >
-              {isProcessing ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <ShoppingCart className="mr-2 h-4 w-4" />
-              )}
-              Pagar con Culqi
-            </Button>
+          {payment?.status === "PENDING" &&
+            payment.provider !== "MANUAL" &&
+            !showManualForm &&
+            paymentSettings.culqiPaymentsEnabled && (
+              <Button
+                type="button"
+                disabled={
+                  isProcessing ||
+                  isPreparingOrder ||
+                  isSubmittingManual
+                }
+                onClick={() => void onPay(payment)}
+              >
+                {isProcessing || isPreparingOrder ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                )}
+                {isPreparingOrder
+                  ? "Preparando Culqi"
+                  : "Pagar con Culqi"}
+              </Button>
           )}
+
+          {payment?.status === "PENDING" &&
+            payment.provider !== "MANUAL" &&
+            paymentSettings.manualPaymentsEnabled &&
+            !showManualForm && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isProcessing || isPreparingOrder}
+                onClick={() => setShowManualForm(true)}
+              >
+                <ReceiptText className="mr-2 h-4 w-4" />
+                Pagar manual
+              </Button>
+            )}
 
           <Button
             type="button"
@@ -894,11 +1393,16 @@ function PendingPaymentDialog({
   );
 }
 
-async function requestCulqiToken(
-  payment: StudentCatalogPayment
-): Promise<string> {
+async function requestCulqiPayment(
+  payment: StudentCatalogPayment,
+  setCheckoutOpen: (open: boolean) => void
+): Promise<CulqiPaymentResult> {
   const publicKey =
     process.env.NEXT_PUBLIC_CULQI_PUBLIC_KEY;
+  const rsaId =
+    process.env.NEXT_PUBLIC_CULQI_RSA_ID;
+  const rsaPublicKey =
+    process.env.NEXT_PUBLIC_CULQI_RSA_PUBLIC_KEY;
 
   if (!publicKey) {
     throw new Error(
@@ -906,10 +1410,19 @@ async function requestCulqiToken(
     );
   }
 
+  if (
+    payment.providerOrderId &&
+    (!rsaId || !rsaPublicKey)
+  ) {
+    throw new Error(
+      "Faltan las claves RSA públicas de Culqi para habilitar pagos con QR."
+    );
+  }
+
   await loadCulqiCheckout();
 
   return new Promise((resolve, reject) => {
-    if (!window.Culqi) {
+    if (!window.CulqiCheckout) {
       reject(
         new Error(
           "No se pudo cargar el checkout de Culqi."
@@ -918,40 +1431,257 @@ async function requestCulqiToken(
       return;
     }
 
-    window.Culqi.publicKey = publicKey;
-    window.Culqi.settings({
-      title: payment.courseTitle,
-      currency: payment.currency,
-      amount: Math.round(payment.amount * 100),
-    });
-    window.Culqi.options({
-      lang: "es",
-      installments: false,
-      modal: true,
-    });
+    let settled = false;
+    let orderGenerated = false;
+    let errorCheckIntervalId: number | null = null;
+    let timeoutId: number | null = null;
+    let stopCloseWatcher: (() => void) | null = null;
 
-    window.culqi = () => {
-      const tokenId = window.Culqi?.token?.id;
+    const clearWatchers = () => {
+      if (errorCheckIntervalId !== null) {
+        window.clearInterval(errorCheckIntervalId);
+      }
 
-      if (tokenId) {
-        resolve(tokenId);
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+
+      stopCloseWatcher?.();
+      stopCloseWatcher = null;
+    };
+
+    const closeCheckoutState = () => {
+      setCheckoutOpen(false);
+    };
+
+    const rejectWithCheckoutError = (
+      checkout: CulqiCheckoutInstance
+    ) => {
+      if (settled) {
         return;
       }
 
       const message =
-        window.Culqi?.error?.user_message ??
-        window.Culqi?.error?.merchant_message ??
-        "Culqi no devolvió un token válido.";
+        checkout.error?.user_message ??
+        checkout.error?.merchant_message ??
+        "Culqi no pudo validar el pago. Intenta nuevamente o usa otro método.";
 
-      reject(new Error(message));
+      settled = true;
+      clearWatchers();
+      closeCheckoutState();
+      console.error("Culqi checkout error", checkout.error);
+      checkout.close();
+      reject(
+        new CulqiCheckoutError(
+          message,
+          checkout.error?.code
+        )
+      );
     };
 
-    window.Culqi.open();
+    const paymentMethods = {
+        tarjeta: true,
+        yape: true,
+        billetera: Boolean(payment.providerOrderId),
+        bancaMovil: false,
+        agente: false,
+        cuotealo: false,
+    };
+
+    const checkout = new window.CulqiCheckout(
+      publicKey,
+      {
+        settings: {
+          title: payment.courseTitle,
+          currency: payment.currency,
+          amount: Math.round(
+            (payment.totalAmount ?? payment.amount) * 100
+          ),
+          ...(payment.providerOrderId
+            ? { order: payment.providerOrderId }
+            : {}),
+          ...(rsaId && rsaPublicKey
+            ? {
+                xculqirsaid: rsaId,
+                rsapublickey: rsaPublicKey,
+              }
+            : {}),
+        },
+        client: {
+          email: payment.studentEmail,
+        },
+        options: {
+          lang: "es",
+          installments: false,
+          modal: true,
+          paymentMethods,
+          paymentMethodsSort:
+            Object.keys(paymentMethods),
+        },
+        appearance: {
+          theme: "default",
+          hiddenCulqiLogo: false,
+          hiddenBannerContent: false,
+          hiddenBanner: false,
+          hiddenToolBarAmount: false,
+          hiddenEmail: true,
+          menuType: "sidebar",
+          buttonCardPayText: "Pagar",
+        },
+      }
+    );
+
+    console.info(
+      "Opening Culqi checkout",
+      {
+        paymentId: payment.id,
+        providerOrderId: payment.providerOrderId,
+        providerOrderStatus:
+          payment.providerOrderStatus,
+        providerOrderExpiresAt:
+          payment.providerOrderExpiresAt,
+        openedAt: new Date().toISOString(),
+      }
+    );
+
+    checkout.culqi = () => {
+      const tokenId = checkout.token?.id;
+      const orderId = checkout.order?.id;
+
+      if (tokenId) {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        clearWatchers();
+        closeCheckoutState();
+        checkout.close();
+        resolve({
+          type: "TOKEN",
+          sourceId: tokenId,
+        });
+        return;
+      }
+
+      if (orderId) {
+        if (settled) {
+          return;
+        }
+
+        orderGenerated = true;
+        return;
+      }
+
+      rejectWithCheckoutError(checkout);
+    };
+
+    errorCheckIntervalId = window.setInterval(() => {
+      if (checkout.error) {
+        rejectWithCheckoutError(checkout);
+      }
+    }, 500);
+
+    timeoutId = window.setTimeout(() => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      clearWatchers();
+      closeCheckoutState();
+      checkout.close();
+      reject(
+        new Error(
+          "Culqi tardó demasiado en responder. Intenta nuevamente."
+        )
+      );
+    }, 120000);
+
+    setCheckoutOpen(true);
+    checkout.open();
+    stopCloseWatcher = watchCulqiCheckoutClose(() => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      clearWatchers();
+      closeCheckoutState();
+
+      if (orderGenerated) {
+        resolve({
+          type: "ORDER",
+        });
+        return;
+      }
+
+      reject(
+        new CulqiCheckoutClosedError()
+      );
+    });
+  });
+}
+
+function watchCulqiCheckoutClose(
+  onClose: () => void
+): () => void {
+  let hasSeenCheckout = hasVisibleCulqiCheckout();
+
+  const observer = new MutationObserver(() => {
+    const isVisible = hasVisibleCulqiCheckout();
+
+    if (isVisible) {
+      hasSeenCheckout = true;
+      return;
+    }
+
+    if (hasSeenCheckout) {
+      observer.disconnect();
+      onClose();
+    }
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["style", "class"],
+  });
+
+  window.setTimeout(() => {
+    hasSeenCheckout = hasSeenCheckout ||
+      hasVisibleCulqiCheckout();
+  }, 250);
+
+  return () => observer.disconnect();
+}
+
+function hasVisibleCulqiCheckout(): boolean {
+  const elements = document.querySelectorAll(
+    "iframe[src*='culqi'], [id*='culqi' i], [class*='culqi' i]"
+  );
+
+  return Array.from(elements).some((element) => {
+    if (!(element instanceof HTMLElement)) {
+      return true;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const style = window.getComputedStyle(element);
+
+    return (
+      rect.width > 0 &&
+      rect.height > 0 &&
+      style.visibility !== "hidden" &&
+      style.display !== "none" &&
+      Number(style.opacity) !== 0
+    );
   });
 }
 
 function loadCulqiCheckout(): Promise<void> {
-  if (window.Culqi) {
+  if (window.CulqiCheckout) {
     return Promise.resolve();
   }
 
@@ -1011,6 +1741,18 @@ function parseOptionalPrice(
   return Number.isFinite(parsed) && parsed >= 0
     ? parsed
     : undefined;
+}
+
+function translatePaymentStatus(status: string): string {
+  const labels: Record<string, string> = {
+    PENDING: "Pendiente",
+    PROCESSING: "Procesando",
+    PAID: "Pagado",
+    FAILED: "Fallido",
+    CANCELLED: "Cancelado",
+  };
+
+  return labels[status] ?? status;
 }
 
 function formatPrice(price: number): string {

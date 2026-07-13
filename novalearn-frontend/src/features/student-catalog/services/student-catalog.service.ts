@@ -6,6 +6,7 @@ import type {
   StudentCatalogEnrollment,
   StudentCatalogFilters,
   StudentCatalogPayment,
+  StudentPaymentSettings,
 } from "@/features/student-catalog/types/student-catalog.types";
 
 export async function getStudentCatalogCourses(
@@ -53,6 +54,35 @@ export async function createStudentCoursePayment(
   return response.data;
 }
 
+export async function getStudentPaymentSettings():
+  Promise<StudentPaymentSettings> {
+  const response = await api.get<StudentPaymentSettings>(
+    "/student/payments/settings"
+  );
+
+  return response.data;
+}
+
+export async function createManualStudentCoursePayment(
+  courseId: number,
+  method: string,
+  reference: string,
+  file: File
+): Promise<StudentCatalogPayment> {
+  const formData = new FormData();
+  formData.append("courseId", String(courseId));
+  formData.append("method", method);
+  formData.append("reference", reference);
+  formData.append("file", file);
+
+  const response = await api.post<StudentCatalogPayment>(
+    "/student/payments/manual",
+    formData
+  );
+
+  return response.data;
+}
+
 export async function createCulqiCharge(
   paymentId: number,
   sourceId: string
@@ -62,6 +92,36 @@ export async function createCulqiCharge(
     {
       sourceId,
     }
+  );
+
+  return response.data;
+}
+
+export async function createCulqiOrder(
+  paymentId: number
+): Promise<StudentCatalogPayment> {
+  const response = await api.post<StudentCatalogPayment>(
+    `/student/payments/${paymentId}/culqi/order`
+  );
+
+  return response.data;
+}
+
+export async function confirmCulqiOrder(
+  paymentId: number
+): Promise<StudentCatalogPayment> {
+  const response = await api.post<StudentCatalogPayment>(
+    `/student/payments/${paymentId}/culqi/order/confirm`
+  );
+
+  return response.data;
+}
+
+export async function cancelStudentCoursePayment(
+  paymentId: number
+): Promise<StudentCatalogPayment> {
+  const response = await api.post<StudentCatalogPayment>(
+    `/student/payments/${paymentId}/cancel`
   );
 
   return response.data;

@@ -13,6 +13,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import type {
   ElementType,
   FormEvent,
@@ -33,10 +34,15 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 import { getAdminUsers } from "@/features/admin-users/services/admin-user.service";
 import type { AdminUser } from "@/features/admin-users/types/admin-user.types";
+import {
+  getPaymentSettings,
+  updatePaymentSettings,
+} from "@/features/admin-courses/services/payment-settings.service";
 
 import type {
   AdminCourseRequest,
@@ -44,6 +50,7 @@ import type {
   CourseStatus,
   CourseType,
 } from "@/features/admin-courses/types/admin-course.types";
+import type { PaymentSettings } from "@/features/admin-courses/types/payment-settings.types";
 
 interface CourseFormProps {
   categories: CourseCategory[];
@@ -70,6 +77,14 @@ const DEFAULT_FORM: AdminCourseRequest = {
   certificateEnabled: true,
 };
 
+const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
+  processingFeePercentage: 4.02,
+  processingFeeTaxPercentage: 0,
+  passProcessingFeeToStudent: true,
+  culqiPaymentsEnabled: true,
+  manualPaymentsEnabled: true,
+};
+
 export function CourseForm({
   categories,
   initialValues = DEFAULT_FORM,
@@ -87,6 +102,17 @@ export function CourseForm({
   );
   const [isLoadingInstructors, setIsLoadingInstructors] =
     useState(true);
+  const [paymentSettings, setPaymentSettings] =
+    useState<PaymentSettings | null>(null);
+  const [editablePaymentSettings, setEditablePaymentSettings] =
+    useState<PaymentSettings | null>(null);
+  const [isSavingPaymentSettings, setIsSavingPaymentSettings] =
+    useState(false);
+  const [priceInput, setPriceInput] = useState(() =>
+    initialValues.price > 0 ? String(initialValues.price) : ""
+  );
+  const [processingFeeInput, setProcessingFeeInput] =
+    useState("4.02");
 
   useEffect(() => {
     let isCancelled = false;
@@ -124,6 +150,35 @@ export function CourseForm({
     };
   }, []);
 
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadPaymentSettings(): Promise<void> {
+      try {
+        const settings = await getPaymentSettings();
+
+        if (!isCancelled) {
+          setPaymentSettings(settings);
+          setEditablePaymentSettings(settings);
+          setProcessingFeeInput(
+            formatNumberInput(settings.processingFeePercentage)
+          );
+        }
+      } catch {
+        if (!isCancelled) {
+          setPaymentSettings(null);
+          setEditablePaymentSettings(null);
+        }
+      }
+    }
+
+    void loadPaymentSettings();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
   const selectedInstructor = useMemo(
     () =>
       instructors.find(
@@ -152,6 +207,15 @@ export function CourseForm({
     form.targetAudience.trim().length > 0 &&
     (form.courseType === "FREE" || form.price > 0);
 
+  const priceBreakdown = useMemo(
+    () =>
+      calculatePriceBreakdown(
+        form.price,
+        editablePaymentSettings ?? paymentSettings
+      ),
+    [form.price, editablePaymentSettings, paymentSettings]
+  );
+
   function updateField<K extends keyof AdminCourseRequest>(
     field: K,
     value: AdminCourseRequest[K]
@@ -160,6 +224,20 @@ export function CourseForm({
       ...current,
       [field]: value,
     }));
+  }
+
+  function updatePriceInput(value: string): void {
+    setPriceInput(value);
+    updateField("price", parseNumberInput(value));
+  }
+
+  function updateProcessingFeeInput(value: string): void {
+    setProcessingFeeInput(value);
+
+    updateEditablePaymentSettings(
+      "processingFeePercentage",
+      parseNumberInput(value)
+    );
   }
 
   async function handleSubmit(
@@ -181,6 +259,60 @@ export function CourseForm({
       thumbnailUrl: form.thumbnailUrl?.trim() || null,
       price: form.courseType === "FREE" ? 0 : form.price,
     });
+  }
+
+  function updateEditablePaymentSettings<K extends keyof PaymentSettings>(
+    field: K,
+    value: PaymentSettings[K]
+  ): void {
+    setEditablePaymentSettings((current) => ({
+      ...(current ?? {
+        ...DEFAULT_PAYMENT_SETTINGS,
+        processingFeePercentage: parseNumberInput(
+          processingFeeInput
+        ),
+        passProcessingFeeToStudent: true,
+      }),
+      [field]: value,
+    }));
+  }
+
+  async function handleSavePaymentSettings(): Promise<void> {
+    if (!editablePaymentSettings) {
+      return;
+    }
+
+    try {
+      setIsSavingPaymentSettings(true);
+
+      const settings = await updatePaymentSettings(
+        {
+          processingFeePercentage:
+            editablePaymentSettings.processingFeePercentage,
+          passProcessingFeeToStudent:
+            editablePaymentSettings.passProcessingFeeToStudent,
+          culqiPaymentsEnabled:
+            editablePaymentSettings.culqiPaymentsEnabled,
+          manualPaymentsEnabled:
+            editablePaymentSettings.manualPaymentsEnabled,
+        }
+      );
+
+      setPaymentSettings(settings);
+      setEditablePaymentSettings(settings);
+
+      toast.success("Métodos de pago actualizados.", {
+        description:
+          "Los próximos pagos usarán esta configuración.",
+      });
+    } catch {
+      toast.error("No se pudo actualizar la comisión.", {
+        description:
+          "Revisa el porcentaje e inténtalo nuevamente.",
+      });
+    } finally {
+      setIsSavingPaymentSettings(false);
+    }
   }
 
   return (
@@ -446,15 +578,26 @@ export function CourseForm({
                       type="number"
                       min={0.01}
                       step="0.01"
-                      value={form.price}
+                      value={priceInput}
                       onChange={(event) =>
-                        updateField(
-                          "price",
-                          Number(event.target.value)
-                        )
+                        updatePriceInput(event.target.value)
                       }
                       placeholder="99.90"
                       required
+                    />
+
+                    <PaymentFeePreview
+                      breakdown={priceBreakdown}
+                      settings={editablePaymentSettings}
+                      processingFeeInput={processingFeeInput}
+                      isSaving={isSavingPaymentSettings}
+                      onChange={updateEditablePaymentSettings}
+                      onProcessingFeeChange={
+                        updateProcessingFeeInput
+                      }
+                      onSave={() =>
+                        void handleSavePaymentSettings()
+                      }
                     />
                   </Field>
                 )}
@@ -618,13 +761,27 @@ export function CourseForm({
 
                   <SummaryItem
                     icon={CircleDollarSign}
-                    label="Precio"
+                    label={
+                      form.courseType === "FREE"
+                        ? "Precio"
+                        : "Precio base"
+                    }
                     value={
                       form.courseType === "FREE"
                         ? "Gratuito"
                         : formatCurrency(form.price)
                     }
                   />
+
+                  {form.courseType === "PAID" && (
+                    <SummaryItem
+                      icon={CircleDollarSign}
+                      label="Precio estudiante"
+                      value={formatCurrency(
+                        priceBreakdown.totalAmount
+                      )}
+                    />
+                  )}
 
                   <SummaryItem
                     icon={Award}
@@ -678,6 +835,222 @@ export function CourseForm({
       </div>
     </form>
   );
+}
+
+interface PaymentFeePreviewProps {
+  breakdown: PriceBreakdown;
+  settings: PaymentSettings | null;
+  processingFeeInput: string;
+  isSaving: boolean;
+  onChange: <K extends keyof PaymentSettings>(
+    field: K,
+    value: PaymentSettings[K]
+  ) => void;
+  onProcessingFeeChange: (value: string) => void;
+  onSave: () => void;
+}
+
+function PaymentFeePreview({
+  breakdown,
+  settings,
+  processingFeeInput,
+  isSaving,
+  onChange,
+  onProcessingFeeChange,
+  onSave,
+}: PaymentFeePreviewProps) {
+  if (!settings) {
+    return (
+      <p className="mt-2 text-xs text-muted-foreground">
+        Cargando configuración de cobro...
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-lg border bg-muted/20 p-3 text-sm">
+      <div>
+        <FieldLabel htmlFor="processingFeePercentage">
+          Porcentaje Culqi (%)
+        </FieldLabel>
+        <Input
+          id="processingFeePercentage"
+          type="number"
+          min={0}
+          step="0.01"
+          value={processingFeeInput}
+          onChange={(event) =>
+            onProcessingFeeChange(event.target.value)
+          }
+          className="mt-1"
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Recargo estimado:{" "}
+          {formatCurrency(breakdown.processingFeeAmount)}
+        </p>
+      </div>
+
+      <label className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4"
+          checked={settings.passProcessingFeeToStudent}
+          onChange={(event) =>
+            onChange(
+              "passProcessingFeeToStudent",
+              event.target.checked
+            )
+          }
+        />
+        Sumar comisión al precio final del estudiante.
+      </label>
+
+      <div className="mt-3 grid gap-2 border-t pt-3">
+        <p className="text-xs font-medium text-muted-foreground">
+          Métodos de pago disponibles
+        </p>
+
+        <div className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 text-sm">
+          <div>
+            <p className="font-medium">
+              Culqi
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Tarjeta, Yape y billeteras digitales.
+            </p>
+          </div>
+          <Switch
+            checked={settings.culqiPaymentsEnabled}
+            onCheckedChange={(checked) =>
+              onChange(
+                "culqiPaymentsEnabled",
+                checked
+              )
+            }
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 text-sm">
+          <div>
+            <p className="font-medium">
+              Pago manual
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Revisión administrativa de comprobantes.
+            </p>
+          </div>
+          <Switch
+            checked={settings.manualPaymentsEnabled}
+            onCheckedChange={(checked) =>
+              onChange(
+                "manualPaymentsEnabled",
+                checked
+              )
+            }
+          />
+        </div>
+
+        {!settings.culqiPaymentsEnabled &&
+          !settings.manualPaymentsEnabled && (
+            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              Debe quedar activo al menos un método de pago para que los
+              estudiantes puedan comprar cursos.
+            </p>
+          )}
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-3 border-t pt-3">
+        <span className="text-muted-foreground">
+          Precio final para estudiante
+        </span>
+        <span className="font-semibold">
+          {formatCurrency(breakdown.totalAmount)}
+        </span>
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="mt-3 w-full"
+        disabled={
+          isSaving ||
+          (!settings.culqiPaymentsEnabled &&
+            !settings.manualPaymentsEnabled)
+        }
+        onClick={onSave}
+      >
+        {isSaving ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <Save className="mr-2 h-4 w-4" />
+        )}
+        Guardar configuración
+      </Button>
+
+      {!settings.passProcessingFeeToStudent && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          El estudiante paga el precio del curso; NovaLearn
+          absorbe la comisión configurada.
+        </p>
+      )}
+
+    </div>
+  );
+}
+
+interface PriceBreakdown {
+  subtotalAmount: number;
+  processingFeeAmount: number;
+  totalAmount: number;
+}
+
+function calculatePriceBreakdown(
+  price: number,
+  settings: PaymentSettings | null
+): PriceBreakdown {
+  const subtotalAmount = normalizeMoney(price);
+  const processingFeeAmount = normalizeMoney(
+    subtotalAmount *
+      ((settings?.processingFeePercentage ?? 0) / 100)
+  );
+  const totalAmount = settings?.passProcessingFeeToStudent
+    ? normalizeMoney(
+        subtotalAmount + processingFeeAmount
+      )
+    : subtotalAmount;
+
+  return {
+    subtotalAmount,
+    processingFeeAmount,
+    totalAmount,
+  };
+}
+
+function normalizeMoney(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) {
+    return 0;
+  }
+
+  return Math.round(value * 100) / 100;
+}
+
+function parseNumberInput(value: string): number {
+  if (value.trim() === "") {
+    return 0;
+  }
+
+  const parsedValue = Number(value);
+
+  return Number.isFinite(parsedValue) ? parsedValue : 0;
+}
+
+function formatNumberInput(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "";
+  }
+
+  return String(value);
 }
 
 interface ThumbnailPreviewProps {
