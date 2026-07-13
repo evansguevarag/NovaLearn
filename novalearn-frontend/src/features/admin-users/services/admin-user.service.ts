@@ -2,6 +2,7 @@ import { api } from "@/lib/api";
 
 import type {
     AdminCreateUserRequest,
+    AdminEmailAvailability,
     AdminUpdateUserRoleRequest,
     AdminUpdateUserStatusRequest,
     AdminUser,
@@ -23,6 +24,19 @@ import type {
     request: AdminCreateUserRequest
     ): Promise<AdminUser> {
     const response = await api.post<AdminUser>("/admin/users", request);
+    return response.data;
+    }
+
+    export async function checkAdminUserEmailAvailability(
+    email: string
+    ): Promise<AdminEmailAvailability> {
+    const response = await api.get<AdminEmailAvailability>(
+        "/admin/users/email-availability",
+        {
+        params: { email },
+        }
+    );
+
     return response.data;
     }
 

@@ -112,4 +112,17 @@ public class RefreshTokenService {
                             .save(refreshToken);
                 });
     }
+
+    @Transactional
+    public void revokeAllRefreshTokensForUser(
+            User user
+    ) {
+        refreshTokenRepository
+                .findByUserAndRevokedFalse(user)
+                .forEach(refreshToken -> {
+                    refreshToken.revoke();
+                    refreshTokenRepository
+                            .save(refreshToken);
+                });
+    }
 }

@@ -2,13 +2,14 @@ export type AdminUserRole = "ADMIN" | "INSTRUCTOR" | "STUDENT";
 
 export type AdminUserStatus =
     | "ACTIVE"
-    | "INACTIVE"
-    | "PENDING_VERIFICATION";
+    | "INACTIVE";
 
     export interface AdminUser {
     id: number;
     firstName: string;
     lastName: string;
+    paternalLastName: string | null;
+    maternalLastName: string | null;
     email: string;
     role: AdminUserRole;
     status: AdminUserStatus;
@@ -19,10 +20,16 @@ export type AdminUserStatus =
 
     export interface AdminCreateUserRequest {
     firstName: string;
-    lastName: string;
+    paternalLastName: string;
+    maternalLastName: string;
     email: string;
     password: string;
     role: AdminUserRole;
+    }
+
+    export interface AdminEmailAvailability {
+    email: string;
+    available: boolean;
     }
 
     export interface AdminUpdateUserRoleRequest {

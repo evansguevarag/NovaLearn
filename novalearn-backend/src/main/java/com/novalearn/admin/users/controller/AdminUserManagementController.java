@@ -1,6 +1,7 @@
 package com.novalearn.admin.users.controller;
 
 import com.novalearn.admin.users.dto.AdminCreateUserRequest;
+import com.novalearn.admin.users.dto.AdminEmailAvailabilityResponse;
 import com.novalearn.admin.users.dto.AdminUpdateUserRoleRequest;
 import com.novalearn.admin.users.dto.AdminUpdateUserStatusRequest;
 import com.novalearn.admin.users.dto.AdminUserResponse;
@@ -32,6 +33,15 @@ public class AdminUserManagementController {
             @PathVariable Long userId
     ) {
         return ResponseEntity.ok(userManagementService.findById(userId));
+    }
+
+    @GetMapping("/email-availability")
+    public ResponseEntity<AdminEmailAvailabilityResponse> checkEmailAvailability(
+            @RequestParam String email
+    ) {
+        return ResponseEntity.ok(
+                userManagementService.checkEmailAvailability(email)
+        );
     }
 
     @PostMapping

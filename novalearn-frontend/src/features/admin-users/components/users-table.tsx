@@ -25,7 +25,7 @@ import {
     TableRow,
     } from "@/components/ui/table";
 
-    import type {
+import type {
     AdminUser,
     AdminUserRole,
     AdminUserStatus,
@@ -122,7 +122,7 @@ import {
                     <TableRow key={user.id}>
                     <TableCell>
                         <p className="font-medium">
-                        {user.firstName} {user.lastName}
+                        {buildUserFullName(user)}
                         </p>
 
                         <p className="text-xs text-muted-foreground">
@@ -174,9 +174,6 @@ import {
                         >
                         <option value="ACTIVE">Activo</option>
                         <option value="INACTIVE">Inactivo</option>
-                        <option value="PENDING_VERIFICATION">
-                            Pendiente
-                        </option>
                         </select>
                     </TableCell>
 
@@ -255,4 +252,14 @@ import {
         </AlertDialog>
         </>
     );
+}
+
+function buildUserFullName(user: AdminUser): string {
+    return [
+        user.firstName,
+        user.paternalLastName || user.lastName,
+        user.maternalLastName,
+    ]
+        .filter(Boolean)
+        .join(" ");
 }

@@ -3,9 +3,16 @@ package com.novalearn.core.auth.controller;
 import com.novalearn.core.auth.cookie.RefreshCookieService;
 import com.novalearn.core.auth.dto.AuthResponse;
 import com.novalearn.core.auth.dto.AuthSessionResult;
+import com.novalearn.core.auth.dto.CompletePasswordResetRequest;
+import com.novalearn.core.auth.dto.EmailAvailabilityResponse;
 import com.novalearn.core.auth.dto.LoginRequest;
+import com.novalearn.core.auth.dto.LoginResponse;
+import com.novalearn.core.auth.dto.LoginResult;
 import com.novalearn.core.auth.dto.LogoutResponse;
+import com.novalearn.core.auth.dto.PasswordResetChallengeResponse;
+import com.novalearn.core.auth.dto.PasswordResetRequest;
 import com.novalearn.core.auth.dto.RegisterRequest;
+import com.novalearn.core.auth.dto.VerifyLoginOtpRequest;
 import com.novalearn.core.auth.service.AuthService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -17,6 +24,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -38,6 +46,15 @@ public class AuthController {
         return ResponseEntity.ok("auth ok");
     }
 
+    @GetMapping("/email-availability")
+    public ResponseEntity<EmailAvailabilityResponse> checkEmailAvailability(
+            @RequestParam String email
+    ) {
+        return ResponseEntity.ok(
+                authService.checkEmailAvailability(email)
+        );
+    }
+
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(
             @Valid @RequestBody RegisterRequest request,
@@ -57,12 +74,29 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(
+    public ResponseEntity<LoginResponse> login(
             @Valid @RequestBody LoginRequest request,
             HttpServletResponse servletResponse
     ) {
+        LoginResult result = authService.login(request);
+
+        if (result.refreshToken() != null) {
+            addRefreshCookie(
+                    servletResponse,
+                    result.refreshToken()
+            );
+        }
+
+        return ResponseEntity.ok(result.response());
+    }
+
+    @PostMapping("/login/verify-otp")
+    public ResponseEntity<AuthResponse> verifyLoginOtp(
+            @Valid @RequestBody VerifyLoginOtpRequest request,
+            HttpServletResponse servletResponse
+    ) {
         AuthSessionResult session =
-                authService.login(request);
+                authService.verifyLoginOtp(request);
 
         addRefreshCookie(
                 servletResponse,
@@ -71,6 +105,24 @@ public class AuthController {
 
         return ResponseEntity.ok(
                 session.response()
+        );
+    }
+
+    @PostMapping("/password-reset/request")
+    public ResponseEntity<PasswordResetChallengeResponse> requestPasswordReset(
+            @Valid @RequestBody PasswordResetRequest request
+    ) {
+        return ResponseEntity.ok(
+                authService.requestPasswordReset(request)
+        );
+    }
+
+    @PostMapping("/password-reset/complete")
+    public ResponseEntity<LogoutResponse> completePasswordReset(
+            @Valid @RequestBody CompletePasswordResetRequest request
+    ) {
+        return ResponseEntity.ok(
+                authService.completePasswordReset(request)
         );
     }
 

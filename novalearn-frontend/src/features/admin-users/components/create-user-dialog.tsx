@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Plus } from "lucide-react";
+import {
+    CheckCircle2,
+    Loader2,
+    Plus,
+    SearchCheck,
+    XCircle,
+    } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +25,8 @@ import {
     FieldLabel,
     } from "@/components/ui/field";
     import { Input } from "@/components/ui/input";
+    import { checkAdminUserEmailAvailability } from "@/features/admin-users/services/admin-user.service";
+    import { PasswordInput } from "@/features/auth/components/password-input";
 
     import type {
     AdminCreateUserRequest,
@@ -32,7 +40,8 @@ import {
 
     const INITIAL_FORM: AdminCreateUserRequest = {
     firstName: "",
-    lastName: "",
+    paternalLastName: "",
+    maternalLastName: "",
     email: "",
     password: "",
     role: "INSTRUCTOR",
@@ -45,16 +54,33 @@ import {
     const [open, setOpen] = useState(false);
     const [form, setForm] =
         useState<AdminCreateUserRequest>(INITIAL_FORM);
+    const [isCheckingEmail, setIsCheckingEmail] =
+        useState(false);
+    const [emailAvailability, setEmailAvailability] =
+        useState<"AVAILABLE" | "UNAVAILABLE" | "UNKNOWN">(
+        "UNKNOWN"
+        );
+
+    const normalizedEmail = form.email.trim().toLowerCase();
+    const canSubmit =
+        !isCreating &&
+        !isCheckingEmail &&
+        emailAvailability !== "UNAVAILABLE";
 
     async function handleSubmit(
         event: React.FormEvent<HTMLFormElement>
     ) {
         event.preventDefault();
 
+        if (emailAvailability === "UNAVAILABLE") {
+        return;
+        }
+
         const created = await onCreate({
         ...form,
         firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
+        paternalLastName: form.paternalLastName.trim(),
+        maternalLastName: form.maternalLastName.trim(),
         email: form.email.trim().toLowerCase(),
         });
 
@@ -71,7 +97,38 @@ import {
 
         if (!nextOpen) {
         setForm(INITIAL_FORM);
+        setEmailAvailability("UNKNOWN");
         }
+    }
+
+    async function handleCheckEmail() {
+        if (!normalizedEmail) {
+        setEmailAvailability("UNKNOWN");
+        return;
+        }
+
+        try {
+        setIsCheckingEmail(true);
+
+        const result =
+            await checkAdminUserEmailAvailability(normalizedEmail);
+
+        setEmailAvailability(
+            result.available ? "AVAILABLE" : "UNAVAILABLE"
+        );
+        } catch {
+        setEmailAvailability("UNKNOWN");
+        } finally {
+        setIsCheckingEmail(false);
+        }
+    }
+
+    function handleEmailChange(value: string) {
+        setForm({
+        ...form,
+        email: value,
+        });
+        setEmailAvailability("UNKNOWN");
     }
 
     return (
@@ -94,10 +151,9 @@ import {
 
             <form className="space-y-5" onSubmit={handleSubmit}>
             <FieldGroup>
-                <div className="grid gap-4 sm:grid-cols-2">
                 <Field>
                     <FieldLabel htmlFor="create-first-name">
-                    Nombre
+                    Nombres completos
                     </FieldLabel>
 
                     <Input
@@ -113,18 +169,38 @@ import {
                     />
                 </Field>
 
+                <div className="grid gap-4 sm:grid-cols-2">
+
                 <Field>
-                    <FieldLabel htmlFor="create-last-name">
-                    Apellido
+                    <FieldLabel htmlFor="create-paternal-last-name">
+                    Apellido paterno
                     </FieldLabel>
 
                     <Input
-                    id="create-last-name"
-                    value={form.lastName}
+                    id="create-paternal-last-name"
+                    value={form.paternalLastName}
                     onChange={(event) =>
                         setForm({
                         ...form,
-                        lastName: event.target.value,
+                        paternalLastName: event.target.value,
+                        })
+                    }
+                    required
+                    />
+                </Field>
+
+                <Field>
+                    <FieldLabel htmlFor="create-maternal-last-name">
+                    Apellido materno
+                    </FieldLabel>
+
+                    <Input
+                    id="create-maternal-last-name"
+                    value={form.maternalLastName}
+                    onChange={(event) =>
+                        setForm({
+                        ...form,
+                        maternalLastName: event.target.value,
                         })
                     }
                     required
@@ -137,18 +213,48 @@ import {
                     Correo electrónico
                 </FieldLabel>
 
+                <div className="flex gap-2">
                 <Input
                     id="create-email"
                     type="email"
                     value={form.email}
                     onChange={(event) =>
-                    setForm({
-                        ...form,
-                        email: event.target.value,
-                    })
+                    handleEmailChange(event.target.value)
                     }
+                    onBlur={() => void handleCheckEmail()}
                     required
                 />
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0"
+                    disabled={isCheckingEmail || !normalizedEmail}
+                    onClick={() => void handleCheckEmail()}
+                >
+                    {isCheckingEmail ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                    <SearchCheck className="h-4 w-4" />
+                    )}
+                    <span className="sr-only">
+                    Verificar correo
+                    </span>
+                </Button>
+                </div>
+
+                {emailAvailability === "AVAILABLE" && (
+                <p className="flex items-center gap-1 text-xs text-emerald-700">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Correo disponible.
+                </p>
+                )}
+
+                {emailAvailability === "UNAVAILABLE" && (
+                <p className="flex items-center gap-1 text-xs text-amber-700">
+                    <XCircle className="h-3.5 w-3.5" />
+                    Este correo ya está en uso.
+                </p>
+                )}
                 </Field>
 
                 <Field>
@@ -156,9 +262,8 @@ import {
                     Contraseña
                 </FieldLabel>
 
-                <Input
+                <PasswordInput
                     id="create-password"
-                    type="password"
                     value={form.password}
                     onChange={(event) =>
                     setForm({
@@ -202,7 +307,7 @@ import {
                 Cancelar
                 </Button>
 
-                <Button type="submit" disabled={isCreating}>
+                <Button type="submit" disabled={!canSubmit}>
                 {isCreating && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}

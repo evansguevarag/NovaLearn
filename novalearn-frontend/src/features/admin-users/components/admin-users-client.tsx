@@ -90,7 +90,14 @@ import {
 
         return users.filter((user) => {
         const fullName =
-            `${user.firstName} ${user.lastName}`.toLowerCase();
+            [
+            user.firstName,
+            user.paternalLastName || user.lastName,
+            user.maternalLastName,
+            ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
 
         const matchesSearch =
             normalizedSearch.length === 0 ||

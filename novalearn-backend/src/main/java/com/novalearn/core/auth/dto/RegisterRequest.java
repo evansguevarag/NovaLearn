@@ -9,7 +9,12 @@ public class RegisterRequest {
     @NotBlank(message = "El nombre es obligatorio")
     private String firstName;
 
-    @NotBlank(message = "El apellido es obligatorio")
+    @NotBlank(message = "El apellido paterno es obligatorio")
+    private String paternalLastName;
+
+    @NotBlank(message = "El apellido materno es obligatorio")
+    private String maternalLastName;
+
     private String lastName;
 
     @Email(message = "El correo no tiene un formato válido")
@@ -22,6 +27,14 @@ public class RegisterRequest {
 
     public String getFirstName() {
         return firstName;
+    }
+
+    public String getPaternalLastName() {
+        return paternalLastName;
+    }
+
+    public String getMaternalLastName() {
+        return maternalLastName;
     }
 
     public String getLastName() {

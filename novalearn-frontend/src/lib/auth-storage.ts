@@ -38,6 +38,9 @@ export function saveAuthSession(
 
   const user: AuthUser = {
     userId: auth.userId,
+    firstName: auth.firstName,
+    paternalLastName: auth.paternalLastName,
+    maternalLastName: auth.maternalLastName,
     email: auth.email,
     role: auth.role,
     status: auth.status,
@@ -85,6 +88,30 @@ export function getAuthUser():
     clearAuthSession();
     return null;
   }
+}
+
+export function updateStoredAuthUserEmail(
+  email: string
+): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const user = getAuthUser();
+
+  if (!user) {
+    return;
+  }
+
+  localStorage.setItem(
+    USER_KEY,
+    JSON.stringify({
+      ...user,
+      email,
+    })
+  );
+
+  notifyAuthStorageChange();
 }
 
 export function clearAuthSession(): void {

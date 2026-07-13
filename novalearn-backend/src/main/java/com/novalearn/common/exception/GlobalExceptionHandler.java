@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -58,6 +59,25 @@ public class GlobalExceptionHandler {
     ) {
         return buildResponse(
                 HttpStatus.FORBIDDEN,
+                exception.getMessage(),
+                request,
+                null
+        );
+    }
+
+    @ExceptionHandler(EmailDeliveryException.class)
+    public ResponseEntity<ApiErrorResponse> handleEmailDelivery(
+            EmailDeliveryException exception,
+            HttpServletRequest request
+    ) {
+        LOGGER.warn(
+                "No se pudo enviar correo en {}: {}",
+                request.getRequestURI(),
+                exception.getMessage()
+        );
+
+        return buildResponse(
+                HttpStatus.SERVICE_UNAVAILABLE,
                 exception.getMessage(),
                 request,
                 null
@@ -142,6 +162,25 @@ public class GlobalExceptionHandler {
         return buildResponse(
                 HttpStatus.BAD_REQUEST,
                 "Parametros invalidos",
+                request,
+                null
+        );
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiErrorResponse> handleDataIntegrityViolation(
+            DataIntegrityViolationException exception,
+            HttpServletRequest request
+    ) {
+        LOGGER.warn(
+                "Restricción de datos violada en {}: {}",
+                request.getRequestURI(),
+                exception.getMostSpecificCause().getMessage()
+        );
+
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "Los datos enviados ya existen o no cumplen una restricción",
                 request,
                 null
         );

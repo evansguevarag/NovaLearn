@@ -1,6 +1,7 @@
 package com.novalearn.admin.users.service;
 
 import com.novalearn.admin.users.dto.AdminCreateUserRequest;
+import com.novalearn.admin.users.dto.AdminEmailAvailabilityResponse;
 import com.novalearn.admin.users.dto.AdminUpdateUserRoleRequest;
 import com.novalearn.admin.users.dto.AdminUpdateUserStatusRequest;
 import com.novalearn.admin.users.dto.AdminUserResponse;
@@ -41,18 +42,35 @@ public class AdminUserManagementService {
         return new AdminUserResponse(user);
     }
 
+    @Transactional(readOnly = true)
+    public AdminEmailAvailabilityResponse checkEmailAvailability(
+            String email
+    ) {
+        String normalizedEmail = normalizeEmail(email);
+
+        return new AdminEmailAvailabilityResponse(
+                normalizedEmail,
+                !userRepository.existsByEmail(normalizedEmail)
+        );
+    }
+
     @Transactional
     public AdminUserResponse create(AdminCreateUserRequest request) {
 
-        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        String normalizedEmail = normalizeEmail(request.getEmail());
 
         if (userRepository.existsByEmail(normalizedEmail)) {
             throw new IllegalArgumentException("Ya existe un usuario registrado con ese correo");
         }
 
         User user = new User();
-        user.setFirstName(request.getFirstName().trim());
-        user.setLastName(request.getLastName().trim());
+        user.setFirstName(normalizeName(request.getFirstName()));
+        user.setPaternalLastName(
+                normalizeName(request.getPaternalLastName())
+        );
+        user.setMaternalLastName(
+                normalizeName(request.getMaternalLastName())
+        );
         user.setEmail(normalizedEmail);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole());
@@ -87,5 +105,21 @@ public class AdminUserManagementService {
     private User findUserOrThrow(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+    }
+
+    private String normalizeName(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        return value.trim().replaceAll("\\s+", " ");
+    }
+
+    private String normalizeEmail(String value) {
+        if (value == null || value.trim().isBlank()) {
+            throw new IllegalArgumentException("El correo es obligatorio");
+        }
+
+        return value.trim().toLowerCase();
     }
 }

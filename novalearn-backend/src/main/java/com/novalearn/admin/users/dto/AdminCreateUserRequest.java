@@ -12,9 +12,16 @@ public class AdminCreateUserRequest {
     @Size(max = 100, message = "El nombre no debe superar 100 caracteres")
     private String firstName;
 
-    @NotBlank(message = "El apellido es obligatorio")
     @Size(max = 100, message = "El apellido no debe superar 100 caracteres")
     private String lastName;
+
+    @NotBlank(message = "El apellido paterno es obligatorio")
+    @Size(max = 100, message = "El apellido paterno no debe superar 100 caracteres")
+    private String paternalLastName;
+
+    @NotBlank(message = "El apellido materno es obligatorio")
+    @Size(max = 100, message = "El apellido materno no debe superar 100 caracteres")
+    private String maternalLastName;
 
     @NotBlank(message = "El correo es obligatorio")
     @Email(message = "El correo no tiene un formato valido")
@@ -29,6 +36,8 @@ public class AdminCreateUserRequest {
 
     public String getFirstName() { return firstName; }
     public String getLastName() { return lastName; }
+    public String getPaternalLastName() { return paternalLastName; }
+    public String getMaternalLastName() { return maternalLastName; }
     public String getEmail() { return email; }
     public String getPassword() { return password; }
     public UserRole getRole() { return role; }

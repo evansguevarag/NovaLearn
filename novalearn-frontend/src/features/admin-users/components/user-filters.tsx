@@ -60,9 +60,6 @@ import type {
             <option value="ALL">Todos los estados</option>
             <option value="ACTIVE">Activo</option>
             <option value="INACTIVE">Inactivo</option>
-            <option value="PENDING_VERIFICATION">
-            Verificación pendiente
-            </option>
         </select>
         </div>
     );

@@ -1,7 +1,10 @@
 package com.novalearn.notification.email.service;
 
+import com.novalearn.common.exception.EmailDeliveryException;
 import com.novalearn.config.resend.ResendProperties;
 import com.novalearn.notification.email.dto.EmailResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -15,6 +18,8 @@ import java.nio.charset.StandardCharsets;
 public class EmailService {
 
     private static final String RESEND_EMAILS_URL = "https://api.resend.com/emails";
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger(EmailService.class);
 
     private final ResendProperties properties;
     private final HttpClient httpClient;
@@ -53,8 +58,13 @@ public class EmailService {
             );
 
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new IllegalArgumentException(
-                        "No se pudo enviar el correo. Resend respondio: " + response.body()
+                LOGGER.warn(
+                        "Resend no pudo enviar el correo. statusCode={}, body={}",
+                        response.statusCode(),
+                        response.body()
+                );
+                throw new EmailDeliveryException(
+                        "No se pudo enviar el código por correo. Verifica la configuración del proveedor de correo."
                 );
             }
 
@@ -64,10 +74,18 @@ public class EmailService {
             );
 
         } catch (IOException e) {
-            throw new IllegalArgumentException("Error de conexion al enviar correo");
+            LOGGER.warn(
+                    "Error de conexión al enviar correo con Resend: {}",
+                    e.getMessage()
+            );
+            throw new EmailDeliveryException(
+                    "No se pudo enviar el código por correo. Inténtalo nuevamente."
+            );
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IllegalArgumentException("Envio de correo interrumpido");
+            throw new EmailDeliveryException(
+                    "El envío del código fue interrumpido. Inténtalo nuevamente."
+            );
         }
     }
 

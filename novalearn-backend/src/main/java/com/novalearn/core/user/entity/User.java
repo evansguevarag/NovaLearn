@@ -26,6 +26,12 @@ public class User {
     @Column(name = "last_name", length = 100)
     private String lastName;
 
+    @Column(name = "paternal_last_name", length = 100)
+    private String paternalLastName;
+
+    @Column(name = "maternal_last_name", length = 100)
+    private String maternalLastName;
+
     @Column(name = "email", nullable = false, unique = true, length = 255)
     private String email;
 
@@ -75,7 +81,7 @@ public class User {
         }
 
         if (status == null) {
-            status = UserStatus.PENDING_VERIFICATION;
+            status = UserStatus.ACTIVE;
         }
 
         if (role == null) {
@@ -106,6 +112,28 @@ public class User {
 
     public void setLastName(String lastName) {
         this.lastName = lastName;
+
+        if (paternalLastName == null && maternalLastName == null) {
+            splitLegacyLastName(lastName);
+        }
+    }
+
+    public String getPaternalLastName() {
+        return paternalLastName;
+    }
+
+    public void setPaternalLastName(String paternalLastName) {
+        this.paternalLastName = paternalLastName;
+        refreshLastName();
+    }
+
+    public String getMaternalLastName() {
+        return maternalLastName;
+    }
+
+    public void setMaternalLastName(String maternalLastName) {
+        this.maternalLastName = maternalLastName;
+        refreshLastName();
     }
 
     public String getEmail() {
@@ -178,6 +206,30 @@ public class User {
 
     public void markAsDeleted() {
         this.deletedAt = LocalDateTime.now();
-        this.status = UserStatus.DELETED;
+        this.status = UserStatus.INACTIVE;
+    }
+
+    private void refreshLastName() {
+        String paternal = paternalLastName != null
+                ? paternalLastName.trim()
+                : "";
+        String maternal = maternalLastName != null
+                ? maternalLastName.trim()
+                : "";
+        String combined = (paternal + " " + maternal).trim();
+
+        if (!combined.isBlank()) {
+            lastName = combined;
+        }
+    }
+
+    private void splitLegacyLastName(String value) {
+        if (value == null || value.trim().isBlank()) {
+            return;
+        }
+
+        String[] parts = value.trim().split("\\s+", 2);
+        paternalLastName = parts[0];
+        maternalLastName = parts.length > 1 ? parts[1] : null;
     }
 }

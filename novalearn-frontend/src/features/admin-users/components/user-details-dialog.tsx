@@ -51,13 +51,31 @@ import {
             <div className="space-y-4">
                 <div className="rounded-xl border bg-muted/30 p-4">
                 <p className="text-lg font-semibold">
-                    {user.firstName} {user.lastName}
+                    {buildUserFullName(user)}
                 </p>
 
                 <p className="mt-1 text-sm text-muted-foreground">
                     ID de usuario: {user.id}
                 </p>
                 </div>
+
+                <DetailRow
+                icon={UserRound}
+                label="Nombres completos"
+                value={user.firstName}
+                />
+
+                <DetailRow
+                icon={UserRound}
+                label="Apellido paterno"
+                value={user.paternalLastName || user.lastName}
+                />
+
+                <DetailRow
+                icon={UserRound}
+                label="Apellido materno"
+                value={user.maternalLastName || "No registrado"}
+                />
 
                 <DetailRow
                 icon={Mail}
@@ -135,4 +153,14 @@ import {
         </div>
         </div>
     );
+}
+
+function buildUserFullName(user: AdminUser): string {
+    return [
+        user.firstName,
+        user.paternalLastName || user.lastName,
+        user.maternalLastName,
+    ]
+        .filter(Boolean)
+        .join(" ");
 }
