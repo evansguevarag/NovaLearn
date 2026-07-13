@@ -46,7 +46,15 @@ Get-Content -LiteralPath $envFile | ForEach-Object {
 Write-Host ""
 Write-Host "Variables de entorno cargadas correctamente." -ForegroundColor Green
 
-$requiredCloudinaryVariables = @(
+$requiredVariables = @(
+    "DB_URL",
+    "DB_USERNAME",
+    "DB_PASSWORD",
+    "JWT_SECRET",
+    "ADMIN_EMAIL",
+    "ADMIN_PASSWORD",
+    "ADMIN_FIRST_NAME",
+    "ADMIN_LAST_NAME",
     "CLOUDINARY_CLOUD_NAME",
     "CLOUDINARY_API_KEY",
     "CLOUDINARY_API_SECRET",
@@ -54,18 +62,18 @@ $requiredCloudinaryVariables = @(
 )
 
 Write-Host ""
-Write-Host "Verificando configuración de Cloudinary..." -ForegroundColor Cyan
+Write-Host "Verificando configuración requerida..." -ForegroundColor Cyan
 
-$missingCloudinaryVariables = @()
+$missingVariables = @()
 
-foreach ($variableName in $requiredCloudinaryVariables) {
+foreach ($variableName in $requiredVariables) {
     $value = [Environment]::GetEnvironmentVariable(
         $variableName,
         "Process"
     )
 
     if ([string]::IsNullOrWhiteSpace($value)) {
-        $missingCloudinaryVariables += $variableName
+        $missingVariables += $variableName
 
         Write-Host "$variableName = NO CONFIGURADA" -ForegroundColor Red
     }
@@ -74,9 +82,9 @@ foreach ($variableName in $requiredCloudinaryVariables) {
     }
 }
 
-if ($missingCloudinaryVariables.Count -gt 0) {
+if ($missingVariables.Count -gt 0) {
     Write-Host ""
-    Write-Host "No se iniciará el backend porque faltan variables de Cloudinary." -ForegroundColor Red
+    Write-Host "No se iniciará el backend porque faltan variables requeridas." -ForegroundColor Red
     exit 1
 }
 

@@ -1,0 +1,31 @@
+{
+  "groups": [
+    {
+      "name": "app",
+      "type": "com.novalearn.NovalearnBackendApplication",
+      "description": "NovaLearn application settings."
+    },
+    {
+      "name": "app.certificates",
+      "type": "com.novalearn.learning.certificate.service.CertificatePdfService",
+      "description": "Certificate generation and verification settings."
+    },
+    {
+      "name": "app.security",
+      "type": "com.novalearn.core.auth.service.AuthService",
+      "description": "NovaLearn authentication and security settings."
+    }
+  ],
+  "properties": [
+    {
+      "name": "app.certificates.verification-base-url",
+      "type": "java.lang.String",
+      "description": "Base URL used to build certificate verification links."
+    },
+    {
+      "name": "app.security.login-otp-enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enables the OTP challenge after password validation during login."
+    }
+  ]
+}
