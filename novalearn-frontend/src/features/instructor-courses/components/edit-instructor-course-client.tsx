@@ -25,6 +25,12 @@ import { getApiErrorMessage } from "@/lib/get-api-error-message";
 
 import { InstructorCourseForm } from "@/features/instructor-courses/components/instructor-course-form";
 import { InstructorCourseThumbnailUploader } from "@/features/instructor-courses/components/instructor-course-thumbnail-uploader";
+import { CertificateTemplateUploader } from "@/features/certificate-templates/components/certificate-template-uploader";
+import {
+  getInstructorCourseCertificateTemplate,
+  updateInstructorCourseCertificateTemplateLayout,
+  uploadInstructorCourseCertificateTemplate,
+} from "@/features/certificate-templates/services/certificate-template.service";
 import {
   getInstructorCourseById,
   getInstructorCourseCategories,
@@ -36,6 +42,7 @@ import type {
   InstructorCourseCategory,
   InstructorCourseRequest,
 } from "@/features/instructor-courses/types/instructor-course.types";
+import type { CourseCertificateTemplate } from "@/features/certificate-templates/types/certificate-template.types";
 
 interface EditInstructorCourseClientProps {
   courseId: number;
@@ -51,6 +58,8 @@ export function EditInstructorCourseClient({
     useState<InstructorCourse | null>(null);
   const [categories, setCategories] =
     useState<InstructorCourseCategory[]>([]);
+  const [certificateTemplate, setCertificateTemplate] =
+    useState<CourseCertificateTemplate | null>(null);
   const [isLoading, setIsLoading] =
     useState(true);
   const [isSubmitting, setIsSubmitting] =
@@ -68,11 +77,14 @@ export function EditInstructorCourseClient({
     Promise.all([
       getInstructorCourseById(courseId),
       getInstructorCourseCategories(),
+      getInstructorCourseCertificateTemplate(courseId)
+        .catch(() => null),
     ])
-      .then(([courseData, categoryData]) => {
+      .then(([courseData, categoryData, templateData]) => {
         if (!isCancelled) {
           setCourse(courseData);
           setCategories(categoryData);
+          setCertificateTemplate(templateData);
         }
       })
       .catch((error: unknown) => {
@@ -137,6 +149,12 @@ export function EditInstructorCourseClient({
           }
         : current
     );
+  }
+
+  function handleTemplateUploaded(
+    template: CourseCertificateTemplate
+  ): void {
+    setCertificateTemplate(template);
   }
 
   if (isChecking || isLoading) {
@@ -230,15 +248,28 @@ export function EditInstructorCourseClient({
             course.status
           )}
           thumbnailSection={
-            <InstructorCourseThumbnailUploader
-              courseId={course.id}
-              currentThumbnailUrl={
-                course.thumbnailUrl
-              }
-              onUploaded={
-                handleThumbnailUploaded
-              }
-            />
+            <div className="space-y-4">
+              <InstructorCourseThumbnailUploader
+                courseId={course.id}
+                currentThumbnailUrl={
+                  course.thumbnailUrl
+                }
+                onUploaded={
+                  handleThumbnailUploaded
+                }
+              />
+              <CertificateTemplateUploader
+                courseId={course.id}
+                template={certificateTemplate}
+                uploadTemplate={
+                  uploadInstructorCourseCertificateTemplate
+                }
+                updateLayout={
+                  updateInstructorCourseCertificateTemplateLayout
+                }
+                onUploaded={handleTemplateUploaded}
+              />
+            </div>
           }
           onSubmit={handleUpdate}
         />

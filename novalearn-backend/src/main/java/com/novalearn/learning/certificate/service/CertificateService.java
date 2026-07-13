@@ -3,6 +3,7 @@ package com.novalearn.learning.certificate.service;
 import com.novalearn.learning.certificate.dto.CertificateResponse;
 import com.novalearn.learning.certificate.entity.Certificate;
 import com.novalearn.learning.certificate.repository.CertificateRepository;
+import com.novalearn.core.user.entity.User;
 import com.novalearn.learning.enrollment.entity.Enrollment;
 import com.novalearn.learning.enrollment.repository.EnrollmentRepository;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ public class CertificateService {
     private final EmailTemplateService emailTemplateService;
     private final UserNotificationService userNotificationService;
     private final AuditLogService auditLogService;
+    private final CertificatePdfService certificatePdfService;
 
     public CertificateService(
             CertificateRepository certificateRepository,
@@ -34,7 +36,8 @@ public class CertificateService {
             EmailService emailService,
             EmailTemplateService emailTemplateService,
             UserNotificationService userNotificationService,
-            AuditLogService auditLogService
+            AuditLogService auditLogService,
+            CertificatePdfService certificatePdfService
     ) {
         this.certificateRepository = certificateRepository;
         this.enrollmentRepository = enrollmentRepository;
@@ -42,6 +45,7 @@ public class CertificateService {
         this.emailTemplateService = emailTemplateService;
         this.userNotificationService = userNotificationService;
         this.auditLogService = auditLogService;
+        this.certificatePdfService = certificatePdfService;
     }
 
     @Transactional
@@ -112,6 +116,15 @@ public class CertificateService {
                 .orElseThrow(() -> new IllegalArgumentException("Certificado no encontrado"));
 
         return new CertificateResponse(certificate);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] downloadStudentCertificate(Long certificateId, User student) {
+        Certificate certificate = certificateRepository
+                .findByIdAndEnrollmentStudentId(certificateId, student.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Certificado no encontrado"));
+
+        return certificatePdfService.generate(certificate);
     }
 
     private String generateUniqueCertificateCode() {

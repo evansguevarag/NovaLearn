@@ -10,6 +10,8 @@ public interface CertificateRepository extends JpaRepository<Certificate, Long> 
 
     Optional<Certificate> findByEnrollmentId(Long enrollmentId);
 
+    Optional<Certificate> findByIdAndEnrollmentStudentId(Long id, Long studentId);
+
     Optional<Certificate> findByCertificateCode(String certificateCode);
 
     boolean existsByEnrollmentId(Long enrollmentId);

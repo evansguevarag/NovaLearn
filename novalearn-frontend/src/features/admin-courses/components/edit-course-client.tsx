@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Award,
   ArrowLeft,
   BookOpen,
   Loader2,
@@ -284,6 +285,18 @@ export function EditCourseClient({
               Administrar contenido
             </Link>
           </Button>
+
+          <Button
+            asChild
+            variant="outline"
+          >
+            <Link
+              href={`/admin/courses/${course.id}/certificate-template`}
+            >
+              <Award className="mr-2 h-4 w-4" />
+              Plantilla de certificado
+            </Link>
+          </Button>
         </div>
       }
     >
@@ -305,15 +318,42 @@ export function EditCourseClient({
           isSubmitting={isSubmitting}
           submitLabel="Guardar cambios"
           thumbnailSection={
-            <CourseThumbnailUploader
-              courseId={course.id}
-              currentThumbnailUrl={
-                course.thumbnailUrl
-              }
-              onUploaded={
-                handleThumbnailUploaded
-              }
-            />
+            <div className="space-y-3">
+              <CourseThumbnailUploader
+                courseId={course.id}
+                currentThumbnailUrl={
+                  course.thumbnailUrl
+                }
+                onUploaded={
+                  handleThumbnailUploaded
+                }
+              />
+
+              <div className="rounded-xl border p-4">
+                <p className="font-medium">
+                  Plantilla de certificado
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Configura la imagen y la posición de
+                  nombres, curso, fecha, código y QR en
+                  una pantalla dedicada.
+                </p>
+
+                <Button
+                  asChild
+                  type="button"
+                  variant="outline"
+                  className="mt-3 w-full"
+                >
+                  <Link
+                    href={`/admin/courses/${course.id}/certificate-template`}
+                  >
+                    <Award className="mr-2 h-4 w-4" />
+                    Configurar plantilla
+                  </Link>
+                </Button>
+              </div>
+            </div>
           }
           onSubmit={handleUpdate}
         />

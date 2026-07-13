@@ -2,8 +2,13 @@ package com.novalearn.learning.certificate.controller;
 
 import com.novalearn.learning.certificate.dto.CertificateResponse;
 import com.novalearn.learning.certificate.service.CertificateService;
+import com.novalearn.core.user.entity.User;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -43,5 +48,25 @@ public class CertificateController {
                 return ResponseEntity.ok(
                         certificateService.findByCode(certificateCode)
                 );
+        }
+
+        @GetMapping("/student/{certificateId}/download")
+        public ResponseEntity<byte[]> downloadStudentCertificate(
+                @PathVariable Long certificateId,
+                Authentication authentication
+        ) {
+                User student = (User) authentication.getPrincipal();
+                byte[] pdf = certificateService.downloadStudentCertificate(certificateId, student);
+
+                return ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_PDF)
+                        .header(
+                                HttpHeaders.CONTENT_DISPOSITION,
+                                ContentDisposition.attachment()
+                                        .filename("certificado-novalearn-" + certificateId + ".pdf")
+                                        .build()
+                                        .toString()
+                        )
+                        .body(pdf);
         }
 }
